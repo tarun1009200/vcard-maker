@@ -1,6 +1,6 @@
 const STORE_KEY = "vcard-maker.cards";
 const SETTINGS_KEY = "vcard-maker.settings";
-const FIELDS = ["name", "org", "website", "position", "mobile", "work", "phone", "fax", "email",
+const FIELDS = ["name", "org", "website", "position", "mobile", "work", "phone", "fax", "support", "sales", "email",
   "country", "state", "street", "city", "zip", "description", "color1", "color2", "font"];
 
 // Shown in the previews until the user starts typing, like a sample card.

@@ -51,6 +51,11 @@ h1 { margin: 0; font-size: 22px; font-weight: 700; }
 .btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
 .btns a { text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 500; }
 .btns i { font-size: 16px; }
+.support { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px; padding: 12px 16px 0; }
+.support a { display: flex; align-items: center; gap: 10px; background: #fff; border: 1.5px solid var(--accent); border-radius: 8px; padding: 10px 12px; color: inherit; text-decoration: none; min-width: 0; }
+.support i { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--btn); color: #fff; display: grid; place-items: center; font-size: 14px; }
+.support b { display: block; font-size: 13px; font-weight: 600; color: var(--accent); }
+.support small { display: block; font-size: 12px; color: #5b6676; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list { list-style: none; margin: 0; padding: 0; }
 .list a { display: flex; gap: 16px; align-items: center; color: inherit; text-decoration: none; }
 .list .ic { flex: none; width: 20px; text-align: center; color: var(--accent); font-size: 17px; }
@@ -181,6 +186,11 @@ function cardParts(c, preview) {
       c.email && `<a href="mailto:${esc(c.email)}"><i class="fa-solid fa-envelope"></i>Email</a>`,
       c.website && `<a href="${esc(webHref(c.website))}" target="_blank" rel="noopener"><i class="fa-solid fa-globe"></i>Website</a>`,
     ].filter(Boolean).join("")}</nav>`,
+    // Only numbers that were filled in get a button.
+    support: c.support || c.sales ? `<nav class="support">${[
+      c.support && `<a href="${telHref(c.support)}"><i class="fa-solid fa-phone-volume"></i><div><b>Customer Support</b><small>${esc(c.support)}</small></div></a>`,
+      c.sales && `<a href="${telHref(c.sales)}"><i class="fa-solid fa-phone"></i><div><b>Sales Support</b><small>${esc(c.sales)}</small></div></a>`,
+    ].filter(Boolean).join("")}</nav>` : "",
     rows: [
       c.mobile && row(telHref(c.mobile), "fa-phone", "Mobile Phone", c.mobile),
       c.work && row(telHref(c.work), "fa-phone", "Phone (Work)", c.work),
@@ -201,21 +211,26 @@ function templateBody(t, p) {
     case "classic":
       return `<header class="hero">${p.avatar}${p.name}${p.subLine}${p.logo}${p.buttons}</header>
     ${p.desc}
+    ${p.support}
     <ul class="list lined">${p.rows}</ul>`;
     case "floating":
       return `<section class="panel">${p.avatar}${p.name}${p.subLine}${p.logo}${p.desc || "<div style='height:12px'></div>"}${p.buttons}</section>
+    ${p.support}
     <ul class="list lined">${p.rows}</ul>`;
     case "spotlight":
       return `<header class="hero">${p.avatar}${p.name}${p.subLine}${p.logo}${p.desc || "<div style='height:14px'></div>"}${p.buttons}</header>
+    ${p.support}
     <ul class="list boxed">${p.rows}</ul>`;
     case "cover":
       return `<div class="cover">${p.photoSrc ? `<img src="${p.photoSrc}" alt="">` : `<i class="fa-solid fa-user"></i>`}</div>
     <div class="body">${p.name}${p.subLine}${p.logo}${p.desc || "<div style='height:14px'></div>"}${p.buttons}</div>
+    ${p.support}
     <ul class="list lined">${p.rows}</ul>`;
     default: // wave
       return `<header class="hero">${p.name}${p.subLines}</header>
     <div class="top">${p.avatar}${p.logo}${p.desc}</div>
     ${p.buttons}
+    ${p.support}
     <ul class="list boxed">${p.rows}</ul>`;
   }
 }
@@ -278,6 +293,11 @@ function buildVcf(c) {
     c.work && `TEL;TYPE=WORK,VOICE:${c.work}`,
     c.phone && `TEL;TYPE=VOICE:${c.phone}`,
     c.fax && `TEL;TYPE=FAX:${c.fax}`,
+    // itemN.X-ABLabel gives the number a custom label in phone contacts.
+    c.support && `item1.TEL;TYPE=WORK,VOICE:${c.support}`,
+    c.support && "item1.X-ABLabel:Customer Support",
+    c.sales && `item2.TEL;TYPE=WORK,VOICE:${c.sales}`,
+    c.sales && "item2.X-ABLabel:Sales Support",
     c.email && `EMAIL;TYPE=INTERNET:${c.email}`,
     c.website && `URL:${webHref(c.website)}`,
     hasAddress && `ADR;TYPE=WORK:;;${v(c.street || c.location)};${v(c.city)};${v(c.state)};${v(c.zip)};${v(c.country)}`,

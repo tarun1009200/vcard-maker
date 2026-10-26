@@ -314,15 +314,61 @@ function buildVcf(c) {
   return lines.map(fold).join("\r\n") + "\r\n";
 }
 
+// Every file of one published card, relative to its folder. Used by the ZIP export and by the publisher.
+function cardFiles(c) {
+  const files = [
+    { path: "index.html", text: buildCardHtml(c, "export") },
+    { path: "contact.vcf", text: buildVcf(c) },
+    { path: "assets/style.css", text: cardCss(c.template) },
+    { path: "assets/card.js", text: CARD_JS },
+  ];
+  if (c.photo) files.push({ path: "assets/photo.jpg", base64: c.photo.split(",")[1] });
+  if (c.logo) files.push({ path: "assets/logo.png", base64: c.logo.split(",")[1] });
+  return files;
+}
+
 // Adds one card's files into a JSZip folder (zip root for single mode, cards/<id>/ for multi mode).
 function addCardToZip(folder, c) {
-  folder.file("index.html", buildCardHtml(c, "export"));
-  folder.file("contact.vcf", buildVcf(c));
-  const assets = folder.folder("assets");
-  assets.file("style.css", cardCss(c.template));
-  assets.file("card.js", CARD_JS);
-  if (c.photo) assets.file("photo.jpg", c.photo.split(",")[1], { base64: true });
-  if (c.logo) assets.file("logo.png", c.logo.split(",")[1], { base64: true });
+  cardFiles(c).forEach((f) => (f.base64 ? folder.file(f.path, f.base64, { base64: true }) : folder.file(f.path, f.text)));
+}
+
+const PHONE_FIELDS = {
+  mobile: "Phone (Mobile)", work: "Phone (Work)", phone: "Phone", fax: "Fax",
+  support: "Customer Support", sales: "Sales Support",
+};
+
+function isWebUrl(u) {
+  try {
+    const x = new URL(u);
+    return (x.protocol === "https:" || x.protocol === "http:") && x.hostname.includes(".");
+  } catch (e) {
+    return false;
+  }
+}
+
+// Returns { field: message } for every problem; an empty object means the card can be published.
+function validateCard(c) {
+  const errors = {};
+  const name = (c.name || "").trim();
+  if (!name) errors.name = "Naam zaroori hai.";
+  else if (name.length > 80) errors.name = "Naam 80 characters se chhota rakho.";
+
+  for (const [f, label] of Object.entries(PHONE_FIELDS)) {
+    const v = (c[f] || "").trim();
+    if (!v) continue;
+    const digits = v.replace(/\D/g, "").length;
+    if (!/^\+?[\d\s().-]+$/.test(v) || digits < 6 || digits > 15) errors[f] = `${label}: sahi phone number daalo (6–15 digits).`;
+  }
+  if (c.email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(c.email.trim())) errors.email = "Email sahi format mein daalo, jaise name@gmail.com.";
+  if (c.website && !isWebUrl(webHref(c.website.trim()))) errors.website = "Website ka sahi link daalo, jaise www.propium.ai.";
+  for (const s of SOCIALS) {
+    const v = c.socials && c.socials[s.key] && c.socials[s.key].trim();
+    if (v && !isWebUrl(socialHref(s.key, v))) errors["social:" + s.key] = `${s.label}: sahi link daalo.`;
+  }
+  if (!["mobile", "work", "phone", "support", "sales", "email", "website"].some((f) => (c[f] || "").trim())) {
+    errors.contact = "Kam se kam ek phone number, email ya website daalo.";
+  }
+  return errors;
 }
 
 // Root page for multi mode: links to every card.

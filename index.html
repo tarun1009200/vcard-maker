@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <h1><i class="fa-solid fa-id-card"></i> Digital Visiting Card Maker</h1>
-    <p>Choose a template → Fill details → Publish on GitHub Pages → Customize QR</p>
+    <p>Choose a template → Fill details → Generate Card → Customize QR → Manage cards</p>
   </header>
 
   <main class="wrap">
@@ -120,7 +120,7 @@
         <aside class="phone-col">
           <div class="phone"><div class="screen"><iframe id="preview" title="Card preview"></iframe></div></div>
           <div class="actions">
-            <button class="btn primary" id="saveCard"><i class="fa-solid fa-floppy-disk"></i> Save to My Cards</button>
+            <button class="btn primary" id="saveCard"><i class="fa-solid fa-floppy-disk"></i> Save Draft</button>
             <button class="btn ghost" id="newCard">New Card</button>
           </div>
           <p class="hint" id="saveMsg"></p>
@@ -130,27 +130,60 @@
 
     <!-- STEP 3 -->
     <section class="step">
-      <div class="step-title"><span class="badge">STEP 3</span> Publish on GitHub Pages</div>
+      <div class="step-title"><span class="badge">STEP 3</span> Generate and publish the card</div>
       <div class="step3">
         <div class="box">
+          <h3><i class="fa-brands fa-github"></i> GitHub connection</h3>
           <div class="pair">
             <label>GitHub username<input id="ghUser" placeholder="tarun1009200"></label>
-            <label>Repository name<input id="ghRepo" placeholder="my-vcard"></label>
+            <label>Card repository<input id="ghRepo" placeholder="my-vcard"></label>
           </div>
-          <h3>Publish mode</h3>
-          <label class="radio block"><input type="radio" name="mode" value="single" checked> <b>Single card</b>: current card opens on the main link <code id="urlSingle"></code></label>
-          <label class="radio block"><input type="radio" name="mode" value="multi"> <b>Multiple cards</b>: all saved cards, each on its own link <code id="urlMulti"></code></label>
-          <button class="btn success wide" id="downloadZip"><i class="fa-solid fa-file-zipper"></i> Download Website ZIP</button>
-          <ol class="steps">
-            <li>GitHub par new <b>public</b> repository banao.</li>
-            <li>ZIP extract karo. <b>Add file → Upload files</b> se <code>index.html</code>, <code>contact.vcf</code> aur <code>assets</code> upload karo.</li>
-            <li><b>Settings → Pages</b> → Deploy from a branch → <code>main</code> / <code>(root)</code> → Save.</li>
-          </ol>
+          <label>Fine-grained access token
+            <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+          </label>
+          <label class="radio"><input type="checkbox" id="rememberToken"> Is device par token yaad rakho</label>
+          <div class="actions left">
+            <button type="button" class="btn primary" id="connectGh"><i class="fa-solid fa-plug"></i> Connect</button>
+            <button type="button" class="btn ghost" id="forgetToken">Forget token</button>
+          </div>
+          <p class="status" id="connStatus"></p>
+          <details>
+            <summary>Token kaise banayein (ek baar)</summary>
+            <ol class="steps">
+              <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> kholo.</li>
+              <li>Name: <code>vcard-maker</code>, Expiration: 90 days.</li>
+              <li>Repository access: <b>Only select repositories</b> → sirf <code>my-vcard</code>.</li>
+              <li>Repository permissions: <b>Contents</b> Read and write, <b>Workflows</b> Read and write, <b>Pages</b> Read-only.</li>
+              <li><b>Generate token</b> → token copy karke upar wale box mein paste karo.</li>
+            </ol>
+            <p class="hint">Token sirf aapke browser mein rehta hai. Ye code, repository ya QR mein kabhi nahi jaata. Token kisi ko mat bhejna. Kabhi leak ho jaaye to GitHub settings se use turant delete kar do.</p>
+          </details>
+          <div id="setupBox" class="setup" hidden></div>
         </div>
+
         <div class="box">
-          <h3><i class="fa-solid fa-layer-group"></i> My Cards</h3>
-          <ul id="cardList" class="card-list"></ul>
-          <p class="hint">Cards sirf is browser mein save hain. Live link update karne ke liye nayi ZIP ki files dobara upload karo.</p>
+          <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Card</h3>
+          <ul id="formErrors" class="errors" hidden></ul>
+          <label class="radio warn"><input type="checkbox" id="publicOk"> <span>Main samajhta hoon ki card ki details aur photo <b>public</b> hongi: link wala koi bhi unhe dekh sakta hai, aur ye public repository ki history mein bhi rehti hain.</span></label>
+          <button type="button" class="btn success wide" id="generateCard"><i class="fa-solid fa-rocket"></i> <span>Generate Card</span></button>
+          <p class="status" id="publishStatus"></p>
+          <div id="publishResult" class="result" hidden>
+            <span class="lbl">Card link</span>
+            <div class="link-row"><a id="resultUrl" target="_blank" rel="noopener"></a><button type="button" class="btn ghost" id="copyResult"><i class="fa-regular fa-copy"></i></button></div>
+            <div class="actions left">
+              <button type="button" class="btn ghost" id="resultQr"><i class="fa-solid fa-qrcode"></i> QR (PNG)</button>
+              <button type="button" class="btn ghost" id="resultVcf"><i class="fa-regular fa-address-card"></i> Contact (.vcf)</button>
+            </div>
+            <p class="hint">QR ka design Step 4 mein badal sakte ho. Wahan link apne aap is card par set ho jaata hai.</p>
+          </div>
+
+          <details>
+            <summary>Manual option: ZIP download karke khud upload karo</summary>
+            <h3>Publish mode</h3>
+            <label class="radio block"><input type="radio" name="mode" value="single" checked> <b>Single card</b>: current card opens on the main link <code id="urlSingle"></code></label>
+            <label class="radio block"><input type="radio" name="mode" value="multi"> <b>Multiple cards</b>: all saved drafts, each on its own link <code id="urlMulti"></code></label>
+            <button class="btn ghost wide" id="downloadZip"><i class="fa-solid fa-file-zipper"></i> Download Website ZIP</button>
+          </details>
         </div>
       </div>
     </section>
@@ -237,12 +270,35 @@
         </aside>
       </div>
     </section>
+
+    <!-- STEP 5 -->
+    <section class="step">
+      <div class="step-title"><span class="badge">STEP 5</span> Card Manager</div>
+      <div class="step3">
+        <div class="box">
+          <div class="box-head">
+            <h3><i class="fa-solid fa-globe"></i> Published cards (online)</h3>
+            <button type="button" class="btn ghost small" id="refreshPublished"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          </div>
+          <ul id="publishedList" class="card-list"></ul>
+          <p class="hint">Ye list GitHub repository ki <code>cards.json</code> se aati hai. Edit, Deactivate aur Delete ke liye token se connect karna zaroori hai.</p>
+        </div>
+        <div class="box">
+          <h3><i class="fa-solid fa-layer-group"></i> Saved drafts (sirf is browser mein)</h3>
+          <ul id="cardList" class="card-list"></ul>
+          <p class="hint">Draft save karne se card online <b>publish nahi hota</b>. Publish karne ke liye Step 3 mein <b>Generate Card</b> dabao.</p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
   <script src="card-template.js"></script>
   <script src="qr-designer.js"></script>
+  <script src="publish-kit.js"></script>
+  <script src="publisher.js"></script>
   <script src="generator.js"></script>
+  <script src="manager.js"></script>
 </body>
 </html>

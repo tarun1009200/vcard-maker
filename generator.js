@@ -55,8 +55,8 @@ function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
     if (!s) return;
-    $("ghUser").value = s.user || "";
-    $("ghRepo").value = s.repo || "";
+    $("ghUser").value = s.user || $("ghUser").value;
+    $("ghRepo").value = s.repo || $("ghRepo").value;
     document.querySelector(`input[name=mode][value=${s.mode || "single"}]`).checked = true;
     qrState = { ...QR_DEFAULTS, ...(s.qr || {}) };
   } catch (e) {}
@@ -103,8 +103,26 @@ function previewCard() {
   return c;
 }
 
+// Field errors show while typing; "required" errors only after the first Generate Card click.
+let showAllErrors = false;
+
+function showValidation() {
+  const errors = validateCard(current);
+  const visible = Object.entries(errors).filter(([f]) => showAllErrors || (f !== "name" && f !== "contact"));
+  form.querySelectorAll(".invalid").forEach((el) => el.classList.remove("invalid"));
+  for (const [f] of visible) {
+    const el = f.startsWith("social:") ? $("socialInputs").querySelector(`[data-social="${f.slice(7)}"]`) : form.elements[f];
+    if (el) el.classList.add("invalid");
+  }
+  const list = $("formErrors");
+  list.innerHTML = visible.map(([, msg]) => `<li>${esc(msg)}</li>`).join("");
+  list.hidden = !visible.length;
+  return errors;
+}
+
 function render() {
   readForm();
+  showValidation();
   document.querySelector(".bg-box").classList.toggle("gradient", current.bgType === "gradient");
   renderGradTypes();
   $("preview").srcdoc = buildCardHtml(previewCard(), "preview");
@@ -255,7 +273,7 @@ function saveCurrent() {
   const i = cards.findIndex((c) => c.id === current.id);
   if (i >= 0) cards[i] = { ...current }; else cards.push({ ...current });
   if (storeCards(cards)) {
-    $("saveMsg").textContent = `Saved as "${current.id}".`;
+    $("saveMsg").textContent = `Draft saved as "${current.id}" (sirf is browser mein, publish nahi hua).`;
     renderList();
     updateUrls();
   }
@@ -271,7 +289,7 @@ function renderList() {
   list.innerHTML = cards.map((c) => `
     <li class="${c.id === current.id ? "active" : ""}">
       ${c.photo ? `<img src="${c.photo}" alt="">` : `<img alt="">`}
-      <div class="meta"><b>${esc(c.name || "Untitled")}</b><small>${esc(c.id)} · ${esc(c.position || "")}</small></div>
+      <div class="meta"><b>${esc(c.name || "Untitled")}</b><small>${esc(c.position || "")} · ${c.publishedId ? `published as ${esc(c.publishedId)}` : "draft, not published"}</small></div>
       <button class="btn ghost" data-open="${c.id}">Edit</button>
       <button class="btn ghost" data-del="${c.id}">Delete</button>
     </li>`).join("");
@@ -302,13 +320,19 @@ function siteUrl() {
   return `https://${user.toLowerCase()}.github.io/${repo}/`;
 }
 
+function publishedUrl(id) {
+  return `${siteUrl()}cards/${id}/`;
+}
+
 function updateUrls() {
   const base = siteUrl();
   const cardUrl = `${base}cards/${current.id || "CARD-ID"}/`;
   $("urlSingle").textContent = base;
   $("urlMulti").textContent = cardUrl;
   const mode = document.querySelector("input[name=mode]:checked").value;
-  if ($("ghUser").value.trim() && $("ghRepo").value.trim()) $("qrLink").value = mode === "single" ? base : cardUrl;
+  // A published card always gets its own permanent link in the QR.
+  if (current.publishedId) $("qrLink").value = publishedUrl(current.publishedId);
+  else if ($("ghUser").value.trim() && $("ghRepo").value.trim()) $("qrLink").value = mode === "single" ? base : cardUrl;
 }
 
 async function downloadZip() {
@@ -322,7 +346,7 @@ async function downloadZip() {
     addCardToZip(root, current);
   } else {
     const cards = loadCards();
-    if (!cards.length) return alert("Multiple mode ke liye pehle cards 'Save to My Cards' karo.");
+    if (!cards.length) return alert("Multiple mode ke liye pehle cards 'Save Draft' karo.");
     cards.forEach((c) => addCardToZip(root.folder(`cards/${c.id}`), c));
     root.file("index.html", buildDirectoryHtml(cards));
   }
@@ -475,6 +499,8 @@ $("newCard").addEventListener("click", () => {
 document.querySelectorAll("input[name=mode]").forEach((r) => r.addEventListener("change", () => { saveSettings(); updateUrls(); renderQr(); }));
 $("downloadZip").addEventListener("click", downloadZip);
 
+$("ghUser").value = "tarun1009200";
+$("ghRepo").value = "my-vcard";
 loadSettings();
 buildTemplatePicker();
 bindQrControls();

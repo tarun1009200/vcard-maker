@@ -2,9 +2,65 @@
 // Uses the GitHub client in publisher.js; the form state lives in generator.js.
 
 const TOKEN_KEY = "vcard-maker.token";
+// Publishing server (vcard-publisher/ on Vercel). It keeps the GitHub token; this page only gets an encrypted session.
+const PUBLISH_API = "https://vcard-publisher.vercel.app";
 
-let repo = null; // GitHubRepo with a token once connected
+let repo = null; // GitHubRepo, via the publishing server or a token, once connected
 let published = []; // registry entries from cards.json
+let signedInAs = "";
+
+// Draft → Publishing → Published (only once the public URL serves this version) or Failed.
+function setPublishState(state, label) {
+  const el = $("publishState");
+  el.dataset.state = state;
+  el.textContent = label || { draft: "Draft", publishing: "Publishing…", published: "Published", failed: "Failed" }[state];
+}
+
+// ---------- sign in with GitHub (publishing server) ----------
+function signIn() {
+  const popup = window.open(`${PUBLISH_API}/api/login`, "vcard-signin", "width=520,height=700");
+  if (!popup) return setStatus("connStatus", "Popup block ho gaya. Browser mein is site ke popups allow karo aur dobara dabao.", "error");
+  setStatus("connStatus", "GitHub sign-in window mein login karo…");
+}
+
+window.addEventListener("message", async (e) => {
+  if (!PUBLISH_API || e.origin !== new URL(PUBLISH_API).origin || !e.data || e.data.type !== "vcard-session") return;
+  if (e.data.error) return setStatus("connStatus", esc(e.data.error), "error");
+  // The session lives only in this variable: closing or reloading the page signs out.
+  const r = new GitHubRepo($("ghUser").value.trim(), $("ghRepo").value.trim(), "", {
+    apiBase: `${PUBLISH_API}/api/gh`, authorization: `Session ${e.data.session}`,
+  });
+  try {
+    await r.info();
+    repo = r;
+    signedInAs = e.data.login;
+    setStatus("connStatus", `<i class="fa-solid fa-circle-check"></i> Signed in as <b>${esc(e.data.login)}</b> → ${esc(r.owner)}/${esc(r.repo)}`, "ok");
+    $("signInGh").hidden = true;
+    $("signOutGh").hidden = false;
+    await renderSetup();
+    refreshPublished();
+  } catch (err) {
+    setStatus("connStatus", esc(err.message), "error");
+  }
+});
+
+function signOut() {
+  repo = null;
+  signedInAs = "";
+  $("signInGh").hidden = false;
+  $("signOutGh").hidden = true;
+  $("setupBox").hidden = true;
+  setStatus("connStatus", "Signed out.");
+  renderPublished();
+}
+
+// A 401 from the publishing server means the session expired.
+function handleAuthError(e) {
+  if (e && e.status === 401 && signedInAs) {
+    signOut();
+    setStatus("connStatus", "Sign-in expire ho gaya. Dobara <b>Sign in with GitHub</b> dabao.", "error");
+  }
+}
 
 function readToken() {
   try { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
@@ -110,11 +166,13 @@ async function generateCard() {
     $("formErrors").scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-  if (!repo) return setStatus("publishStatus", "Pehle GitHub se Connect karo (upar wala box).", "error");
+  if (!repo) return setStatus("publishStatus", PUBLISH_API ? "Pehle <b>Sign in with GitHub</b> dabao (upar wala box)." : "Pehle GitHub se Connect karo (upar wala box).", "error");
   if (!$("publicOk").checked) return setStatus("publishStatus", "Publish karne se pehle public wala checkbox tick karo.", "error");
 
   const btn = $("generateCard");
+  if (btn.disabled) return; // a double click must not publish twice
   btn.disabled = true;
+  setPublishState("publishing");
   setStatus("publishStatus", `<i class="fa-solid fa-spinner fa-spin"></i> GitHub par commit ho raha hai…`);
   try {
     const res = await publishCard(repo, current, current.publishedId);
@@ -124,8 +182,10 @@ async function generateCard() {
     updateUrls();
     renderQr();
     refreshPublished();
-    waitUntilLive(res);
+    await waitUntilLive(res);
   } catch (e) {
+    handleAuthError(e);
+    setPublishState("failed");
     setStatus("publishStatus", esc(e.message), "error");
   } finally {
     btn.disabled = false;
@@ -152,11 +212,17 @@ async function waitUntilLive({ id, updated }) {
     try {
       const res = await fetch(`${url}card.json?v=${Date.now()}`, { cache: "no-store" });
       if (res.ok && (await res.json()).updated === updated) {
-        setStatus("publishStatus", `<i class="fa-solid fa-circle-check"></i> Card live hai: <a href="${url}" target="_blank" rel="noopener">${url}</a>`, "ok");
-        return;
+        // card.json is deployed together with the page, but confirm the page itself is reachable too.
+        const page = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
+        if (page.ok) {
+          setPublishState("published");
+          setStatus("publishStatus", `<i class="fa-solid fa-circle-check"></i> Card live hai: <a href="${url}" target="_blank" rel="noopener">${url}</a>`, "ok");
+          return;
+        }
       }
     } catch (e) {}
   }
+  setPublishState("failed");
   setStatus("publishStatus", `Card commit ho gaya hai, lekin 6 minute mein live nahi dikha. <a href="${actions}" target="_blank" rel="noopener">Actions</a> mein deploy ka status dekho aur Settings → Pages ka Source check karo.`, "error");
 }
 
@@ -258,6 +324,7 @@ $("publishedList").addEventListener("click", async (e) => {
       await refreshPublished();
     }
   } catch (err) {
+    handleAuthError(err);
     alert(err.message);
   } finally {
     btn.disabled = false;
@@ -276,12 +343,25 @@ $("resultVcf").addEventListener("click", () => downloadVcfFor($("resultUrl").dat
 $("newCard").addEventListener("click", () => {
   $("publishResult").hidden = true;
   setStatus("publishStatus", "");
+  setPublishState("draft");
   showAllErrors = false;
   showValidation();
   renderPublished();
 });
+// Edits after publishing are a draft until Generate Card is pressed again.
+form.addEventListener("input", () => {
+  if ($("publishState").dataset.state !== "publishing") setPublishState("draft", current.publishedId ? "Draft (unpublished changes)" : "Draft");
+});
+$("signInGh").addEventListener("click", signIn);
+$("signOutGh").addEventListener("click", signOut);
 
 (function init() {
+  if (PUBLISH_API) {
+    $("signInBox").hidden = false;
+    // Session from the server only; the token option stays available under "Advanced".
+    refreshPublished();
+    return;
+  }
   const token = readToken();
   if (token) {
     $("ghToken").value = token;

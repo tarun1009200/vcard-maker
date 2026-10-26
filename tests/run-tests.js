@@ -6,12 +6,9 @@ const path = require("path");
 const vm = require("vm");
 const { execFileSync } = require("child_process");
 
-const ROOT = path.join(__dirname, "..");
-const ctx = vm.createContext({ btoa, atob, URL, console, setTimeout, fetch: null });
-const source = ["card-template.js", "publish-kit.js", "publisher.js"].map((f) => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n;\n");
-vm.runInContext(source + `
-;this.T = { buildCardHtml, buildVcf, validateCard, cardSlug, uniqueSlug, publishCard, loadPublishedCard,
-  deactivateCard, activateCard, deleteCard, setupRepo, checkSetup, readRegistry, GitHubRepo, KIT_FILES };`, ctx);
+const { fakeGitHub, loadClient } = require("./fake-github");
+
+const ctx = loadClient(vm, path.join(__dirname, ".."));
 const T = ctx.T;
 
 let passed = 0, failed = 0;
@@ -19,79 +16,6 @@ const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 function assert(cond, msg) { if (!cond) throw new Error(msg || "assertion failed"); }
 function eq(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg || "not equal"}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`); }
-
-// ---------- fake GitHub ----------
-function fakeGitHub(files = {}, { failFirstRefUpdate = false } = {}) {
-  let n = 0;
-  const id = (p) => `${p}${++n}`;
-  const blobs = new Map(), trees = new Map(), commits = new Map();
-  const t0 = id("t");
-  trees.set(t0, new Map(Object.entries(files).map(([p, text]) => [p, Buffer.from(text).toString("base64")])));
-  const c0 = id("c");
-  commits.set(c0, { tree: t0 });
-  let head = c0, refFailures = failFirstRefUpdate ? 1 : 0;
-  const calls = [];
-  const res = (status, body) => ({ ok: status < 300, status, statusText: "", json: async () => body });
-
-  async function fetch(url, opts = {}) {
-    const method = opts.method || "GET";
-    const u = new URL(url);
-    const body = opts.body ? JSON.parse(opts.body) : null;
-    calls.push({ method, path: u.pathname, auth: opts.headers && opts.headers.Authorization });
-    if (u.pathname === "/user") return res(200, { login: "tester" });
-    const m = u.pathname.match(/^\/repos\/o\/r(.*)$/);
-    if (!m) return res(404, { message: "Not Found" });
-    const rest = m[1];
-    let x;
-    if (rest === "") return res(200, { default_branch: "main" });
-    if (rest === "/pages") return res(200, { build_type: "workflow" });
-    if (rest === "/git/ref/heads/main") return res(200, { object: { sha: head } });
-    if ((x = rest.match(/^\/git\/commits\/(\w+)$/))) return res(200, { tree: { sha: commits.get(x[1]).tree } });
-    if ((x = rest.match(/^\/git\/trees\/(\w+)$/))) return res(200, { tree: [...trees.get(x[1]).keys()].map((p) => ({ path: p, type: "blob" })) });
-    if (rest === "/git/blobs" && method === "POST") { const s = id("b"); blobs.set(s, body.content); return res(201, { sha: s }); }
-    if (rest === "/git/trees" && method === "POST") {
-      const t = new Map(trees.get(body.base_tree));
-      for (const e of body.tree) {
-        if (e.sha === null) {
-          if (!t.has(e.path)) return res(422, { message: `cannot delete missing ${e.path}` });
-          t.delete(e.path);
-        } else t.set(e.path, blobs.get(e.sha));
-      }
-      const s = id("t");
-      trees.set(s, t);
-      return res(201, { sha: s });
-    }
-    if (rest === "/git/commits" && method === "POST") { const s = id("c"); commits.set(s, { tree: body.tree, parent: body.parents[0], message: body.message }); return res(201, { sha: s }); }
-    if (rest === "/git/refs/heads/main" && method === "PATCH") {
-      if (refFailures-- > 0) return res(422, { message: "Update is not a fast forward" });
-      if (commits.get(body.sha).parent !== head) return res(422, { message: "Update is not a fast forward" });
-      head = body.sha;
-      return res(200, {});
-    }
-    if ((x = rest.match(/^\/contents\/(.+)$/))) {
-      const t = trees.get(commits.get(u.searchParams.get("ref") || head).tree);
-      const p = decodeURIComponent(x[1]);
-      return t.has(p) ? res(200, { content: t.get(p) }) : res(404, { message: "Not Found" });
-    }
-    return res(404, { message: `unhandled ${method} ${rest}` });
-  }
-
-  const tree = () => trees.get(commits.get(head).tree);
-  return {
-    fetch, calls,
-    has: (p) => tree().has(p),
-    text: (p) => Buffer.from(tree().get(p), "base64").toString("utf8"),
-    paths: () => [...tree().keys()].sort(),
-    commitCount: () => [...commits.values()].length,
-    lastMessage: () => commits.get(head).message,
-    writeTo(dir) {
-      for (const [p, b64] of tree()) {
-        fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true });
-        fs.writeFileSync(path.join(dir, p), Buffer.from(b64, "base64"));
-      }
-    },
-  };
-}
 
 function connect(gh) {
   ctx.fetch = gh.fetch;
@@ -250,7 +174,7 @@ test("GitHub errors are explained", async () => {
     throw new Error("no error thrown");
   } catch (e) {
     eq(e.status, 401);
-    assert(/Token/.test(e.message), e.message);
+    assert(/token/i.test(e.message), e.message);
   }
 });
 

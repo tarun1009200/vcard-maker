@@ -138,17 +138,22 @@
             <label>GitHub username<input id="ghUser" placeholder="tarun1009200"></label>
             <label>Card repository<input id="ghRepo" placeholder="my-vcard"></label>
           </div>
-          <label>Fine-grained access token
-            <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-          </label>
-          <label class="radio"><input type="checkbox" id="rememberToken"> Is device par token yaad rakho</label>
-          <div class="actions left">
-            <button type="button" class="btn primary" id="connectGh"><i class="fa-solid fa-plug"></i> Connect</button>
-            <button type="button" class="btn ghost" id="forgetToken">Forget token</button>
+          <div id="signInBox" class="actions left" hidden>
+            <button type="button" class="btn primary" id="signInGh"><i class="fa-brands fa-github"></i> Sign in with GitHub</button>
+            <button type="button" class="btn ghost" id="signOutGh" hidden>Sign out</button>
           </div>
           <p class="status" id="connStatus"></p>
-          <details>
-            <summary>Token kaise banayein (ek baar)</summary>
+          <details id="tokenOption">
+            <summary>Advanced: token se connect karo</summary>
+            <label>Fine-grained access token
+              <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+            </label>
+            <label class="radio"><input type="checkbox" id="rememberToken"> Is device par token yaad rakho</label>
+            <div class="actions left">
+              <button type="button" class="btn primary" id="connectGh"><i class="fa-solid fa-plug"></i> Connect</button>
+              <button type="button" class="btn ghost" id="forgetToken">Forget token</button>
+            </div>
+            <p class="hint"><b>Token kaise banayein (ek baar):</b></p>
             <ol class="steps">
               <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> kholo.</li>
               <li>Name: <code>vcard-maker</code>, Expiration: 90 days.</li>
@@ -162,7 +167,10 @@
         </div>
 
         <div class="box">
-          <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Card</h3>
+          <div class="box-head">
+            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Card</h3>
+            <span class="pill state" id="publishState" data-state="draft">Draft</span>
+          </div>
           <ul id="formErrors" class="errors" hidden></ul>
           <label class="radio warn"><input type="checkbox" id="publicOk"> <span>Main samajhta hoon ki card ki details aur photo <b>public</b> hongi: link wala koi bhi unhe dekh sakta hai, aur ye public repository ki history mein bhi rehti hain.</span></label>
           <button type="button" class="btn success wide" id="generateCard"><i class="fa-solid fa-rocket"></i> <span>Generate Card</span></button>

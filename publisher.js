@@ -13,7 +13,8 @@ class GitHubError extends Error {
 }
 
 function explainGitHubError(status, message) {
-  if (status === 401) return "Token galat hai ya expire ho gaya hai. Naya token banao.";
+  if (status === 401) return `Sign-in expire ho gaya ya token galat hai (${message}).`;
+  if (status === 429) return "Bahut saari requests ho gayi. Ek minute ruk kar dobara try karo.";
   if (status === 403) return `Token ke paas is kaam ki permission nahi hai (${message}).`;
   if (status === 404) return "Repository ya file nahi mili, ya token ko is repository ka access nahi hai.";
   if (status === 409) return "Repository khaali hai. Pehle GitHub par ek README commit karo.";
@@ -25,18 +26,21 @@ function fromBase64Text(b) { return decodeURIComponent(escape(atob(b))); }
 function encodePath(p) { return p.split("/").map(encodeURIComponent).join("/"); }
 
 class GitHubRepo {
-  constructor(owner, repo, token) {
+  // Talks to api.github.com with a token, or to the publishing server with `apiBase` + a session `authorization`.
+  constructor(owner, repo, token, { apiBase = GITHUB_API, authorization = "" } = {}) {
     this.owner = owner;
     this.repo = repo;
     this.token = token || "";
+    this.apiBase = apiBase;
+    this.authorization = authorization || (this.token ? `Bearer ${this.token}` : "");
     this.branch = "main";
   }
 
   async request(path, { method = "GET", body, allow404 = false } = {}) {
     const headers = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+    if (this.authorization) headers.Authorization = this.authorization;
     if (body) headers["Content-Type"] = "application/json";
-    const res = await fetch(GITHUB_API + path, { method, headers, body: body && JSON.stringify(body), cache: "no-store" });
+    const res = await fetch(this.apiBase + path, { method, headers, body: body && JSON.stringify(body), cache: "no-store" });
     if (allow404 && res.status === 404) return null;
     if (!res.ok) {
       let message = res.statusText;

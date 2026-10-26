@@ -1,0 +1,12 @@
+{
+  "name": "vcard-publisher",
+  "private": true,
+  "type": "module",
+  "description": "Signs in with the vCard GitHub App and publishes cards to my-vcard",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node test/run-tests.js"
+  }
+}

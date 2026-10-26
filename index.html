@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Digital Visiting Card Maker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="generator.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><i class="fa-solid fa-id-card"></i> Digital Visiting Card Maker</h1>
+    <p>Choose a template → Fill details → Publish on GitHub Pages → Customize QR</p>
+  </header>
+
+  <main class="wrap">
+    <!-- STEP 1 -->
+    <section class="step">
+      <div class="step-title"><span class="badge">STEP 1</span> Choose a template</div>
+      <div class="templates" id="templates"></div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="step">
+      <div class="step-title"><span class="badge">STEP 2</span> Complete the vCard data entry</div>
+      <div class="step2">
+        <form id="form" autocomplete="off">
+          <div class="cols">
+            <div class="group">
+              <h3>Your Name</h3>
+              <input name="name" placeholder="User Name">
+              <input name="website" placeholder="Your Website (https://)">
+            </div>
+            <div class="group">
+              <h3>Organization</h3>
+              <input name="org" placeholder="Company Name">
+              <input name="position" placeholder="Position">
+            </div>
+            <div class="group">
+              <h3>Contacts</h3>
+              <div class="pair"><input name="mobile" placeholder="Phone (Mobile)"><input name="work" placeholder="Phone (Work)"></div>
+              <div class="pair"><input name="phone" placeholder="Phone"><input name="fax" placeholder="Fax"></div>
+              <input name="email" type="email" placeholder="Your Email (username@email.com)">
+            </div>
+            <div class="group">
+              <h3>Address</h3>
+              <div class="pair"><input name="country" placeholder="Country"><input name="state" placeholder="State"></div>
+              <input name="street" placeholder="Street">
+              <div class="pair"><input name="city" placeholder="City"><input name="zip" placeholder="Zipcode"></div>
+            </div>
+          </div>
+
+          <div class="group">
+            <h3>Personal description</h3>
+            <textarea name="description" rows="3" placeholder="Give a brief description of yourself"></textarea>
+          </div>
+
+          <div class="cols">
+            <div class="group">
+              <h3>Primary Photo <small>(320 x 320 px)</small></h3>
+              <div class="box img-pick">
+                <div class="drop" id="photoDrop"><i class="fa-regular fa-image"></i><img id="photoThumb" alt=""></div>
+                <div class="stack">
+                  <label class="btn primary">Upload<input type="file" id="photoInput" accept="image/*" hidden></label>
+                  <button type="button" class="btn ghost" id="photoRemove">Remove image</button>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <h3>Background</h3>
+              <div class="box bg-box">
+                <div class="radios">
+                  <label class="radio"><input type="radio" name="bgType" value="solid" checked> Solid Color</label>
+                  <label class="radio"><input type="radio" name="bgType" value="gradient"> Gradient</label>
+                </div>
+                <div class="color-row">
+                  <input type="color" name="color1" value="#4a87e0"><input name="hex1" class="hex" value="#4a87e0" maxlength="7">
+                  <button type="button" class="swap grad-only" id="swapColors" title="Swap colors"><i class="fa-solid fa-right-left"></i></button>
+                  <input type="color" name="color2" value="#c03e4a" class="grad-only"><input name="hex2" class="hex grad-only" value="#c03e4a" maxlength="7">
+                </div>
+                <div class="grad-type grad-only">
+                  <span>Gradient Type</span>
+                  <div id="gradTypes" class="grad-options"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cols">
+            <div class="group">
+              <h3>Company Logo</h3>
+              <div class="box img-pick">
+                <div class="drop" id="logoDrop"><i class="fa-regular fa-building"></i><img id="logoThumb" alt=""></div>
+                <div class="stack">
+                  <label class="btn primary">Upload<input type="file" id="logoInput" accept="image/*" hidden></label>
+                  <button type="button" class="btn ghost" id="logoRemove">Remove logo</button>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <h3>Font Family</h3>
+              <select name="font" id="fontSelect"></select>
+            </div>
+          </div>
+
+          <div class="group">
+            <h3>Add Links and Connections</h3>
+            <div class="social-bar">
+              <button type="button" class="arrow" data-scroll="-1"><i class="fa-solid fa-chevron-left"></i></button>
+              <div class="social-picker" id="socialPicker"></div>
+              <button type="button" class="arrow" data-scroll="1"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div id="socialInputs" class="social-inputs"></div>
+          </div>
+        </form>
+
+        <aside class="phone-col">
+          <div class="phone"><div class="screen"><iframe id="preview" title="Card preview"></iframe></div></div>
+          <div class="actions">
+            <button class="btn primary" id="saveCard"><i class="fa-solid fa-floppy-disk"></i> Save to My Cards</button>
+            <button class="btn ghost" id="newCard">New Card</button>
+          </div>
+          <p class="hint" id="saveMsg"></p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="step">
+      <div class="step-title"><span class="badge">STEP 3</span> Publish on GitHub Pages</div>
+      <div class="step3">
+        <div class="box">
+          <div class="pair">
+            <label>GitHub username<input id="ghUser" placeholder="tarun1009200"></label>
+            <label>Repository name<input id="ghRepo" placeholder="my-vcard"></label>
+          </div>
+          <h3>Publish mode</h3>
+          <label class="radio block"><input type="radio" name="mode" value="single" checked> <b>Single card</b>: current card opens on the main link <code id="urlSingle"></code></label>
+          <label class="radio block"><input type="radio" name="mode" value="multi"> <b>Multiple cards</b>: all saved cards, each on its own link <code id="urlMulti"></code></label>
+          <button class="btn success wide" id="downloadZip"><i class="fa-solid fa-file-zipper"></i> Download Website ZIP</button>
+          <ol class="steps">
+            <li>GitHub par new <b>public</b> repository banao.</li>
+            <li>ZIP extract karo. <b>Add file → Upload files</b> se <code>index.html</code>, <code>contact.vcf</code> aur <code>assets</code> upload karo.</li>
+            <li><b>Settings → Pages</b> → Deploy from a branch → <code>main</code> / <code>(root)</code> → Save.</li>
+          </ol>
+        </div>
+        <div class="box">
+          <h3><i class="fa-solid fa-layer-group"></i> My Cards</h3>
+          <ul id="cardList" class="card-list"></ul>
+          <p class="hint">Cards sirf is browser mein save hain. Live link update karne ke liye nayi ZIP ki files dobara upload karo.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="step">
+      <div class="step-title"><span class="badge">STEP 4</span> Customize your QR code</div>
+      <div class="step4">
+        <div class="qr-left">
+          <label class="link-label">Your Card Link<input id="qrLink" placeholder="https://tarun1009200.github.io/my-vcard/"></label>
+          <div class="tabs" id="qrTabs">
+            <button type="button" data-tab="pattern" class="on"><i class="fa-solid fa-qrcode"></i> Pattern</button>
+            <button type="button" data-tab="eyes"><i class="fa-regular fa-eye"></i> Eyes</button>
+            <button type="button" data-tab="logo"><i class="fa-regular fa-image"></i> Logo</button>
+            <button type="button" data-tab="colors"><i class="fa-solid fa-sliders"></i> Colors</button>
+            <button type="button" data-tab="frame"><i class="fa-regular fa-square"></i> Frame</button>
+            <button type="button" data-tab="presets"><i class="fa-solid fa-table-cells-large"></i> Templates</button>
+          </div>
+
+          <div class="tab-panel" data-panel="pattern"><div class="tiles" id="patternTiles"></div></div>
+
+          <div class="tab-panel" data-panel="eyes" hidden>
+            <h4>Eye frame</h4><div class="tiles" id="eyeFrameTiles"></div>
+            <h4>Eye ball</h4><div class="tiles" id="eyeBallTiles"></div>
+          </div>
+
+          <div class="tab-panel" data-panel="logo" hidden>
+            <div class="tiles" id="logoTiles">
+              <button type="button" class="tile" data-logo="none"><i class="fa-solid fa-xmark"></i><span>None</span></button>
+              <button type="button" class="tile" data-logo="company"><i class="fa-regular fa-building"></i><span>Company logo</span></button>
+              <button type="button" class="tile" data-logo="photo"><i class="fa-regular fa-user"></i><span>Your photo</span></button>
+              <label class="tile" data-logo="custom"><i class="fa-solid fa-upload"></i><span>Upload</span><input type="file" id="qrLogoInput" accept="image/*" hidden></label>
+            </div>
+            <div class="box opts">
+              <label>Logo size <input type="range" id="logoSize" min="0.2" max="0.5" step="0.05"></label>
+              <label class="radio"><input type="checkbox" id="clearBehind"> Remove dots behind logo</label>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-panel="colors" hidden>
+            <div class="box opts">
+              <h4>Pattern color</h4>
+              <div class="radios">
+                <label class="radio"><input type="radio" name="dotsFill" value="solid" checked> Solid Color</label>
+                <label class="radio"><input type="radio" name="dotsFill" value="gradient"> Gradient</label>
+              </div>
+              <div class="color-row">
+                <input type="color" data-qr="dot1"><input class="hex" data-qr-hex="dot1" maxlength="7">
+                <span id="dot2Wrap" class="color-row"><input type="color" data-qr="dot2"><input class="hex" data-qr-hex="dot2" maxlength="7"></span>
+              </div>
+              <h4>Eye color</h4>
+              <div class="color-row"><input type="color" data-qr="eyeColor"><input class="hex" data-qr-hex="eyeColor" maxlength="7"></div>
+              <h4>Background color</h4>
+              <div class="color-row"><input type="color" data-qr="bg"><input class="hex" data-qr-hex="bg" maxlength="7"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-panel="frame" hidden>
+            <p class="info"><i class="fa-solid fa-circle-info"></i> A QR code with a frame and call-to-action gets more scans.</p>
+            <div class="tiles big" id="frameTiles"></div>
+            <div class="box opts">
+              <h4>Frame color</h4>
+              <div class="color-row"><input type="color" data-qr="frameColor"><input class="hex" data-qr-hex="frameColor" maxlength="7"></div>
+              <div class="pair">
+                <label>Frame text (max 15 characters)<input id="frameText" maxlength="15"></label>
+                <label>Frame text font<select id="frameFont"></select></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-panel="presets" hidden><div class="tiles big" id="presetTiles"></div></div>
+        </div>
+
+        <aside class="qr-right">
+          <p class="hint center">Always scan to test that your QR code works.</p>
+          <div class="qr-preview"><img id="qrPreview" alt="QR code preview"></div>
+          <div class="radios formats">
+            <label class="radio"><input type="radio" name="qrFormat" value="png" checked> PNG</label>
+            <label class="radio"><input type="radio" name="qrFormat" value="svg"> SVG</label>
+            <label class="radio"><input type="radio" name="qrFormat" value="jpeg"> JPEG</label>
+          </div>
+          <input id="qrName" placeholder="Name your QR Code (optional)">
+          <button class="btn success wide" id="downloadQr"><i class="fa-solid fa-download"></i> Download</button>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <script src="card-template.js"></script>
+  <script src="qr-designer.js"></script>
+  <script src="generator.js"></script>
+</body>
+</html>

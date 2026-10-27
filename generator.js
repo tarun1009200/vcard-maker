@@ -1,10 +1,10 @@
 const STORE_KEY = "vcard-maker.cards";
 const FIELDS = ["name", "org", "website", "position", "mobile", "support", "sales", "email",
-  "country", "state", "street", "city", "zip", "description", "color1", "color2", "font"];
+  "country", "state", "street", "city", "zip", "color1", "color2", "font"];
 
 // Shown in the previews until the user starts typing, like a sample card.
 const PLACEHOLDER = {
-  name: "Your Full Name", position: "Position", org: "Company Name", description: "Personal Description",
+  name: "Your Full Name", position: "Position", org: "Company Name",
   mobile: "Mobile Number", email: "Email", website: "Website",
 };
 
@@ -50,6 +50,7 @@ function readForm() {
   delete current.location; // migrated into `street` by fillForm
   delete current.fax; // no longer collected; dropped from older cards when they are edited
   delete current.work;
+  delete current.description;
   delete current.phone; // migrated into `mobile` by fillForm
   current.socials = {};
 }

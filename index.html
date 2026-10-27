@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <h1><i class="fa-solid fa-id-card"></i> Digital Visiting Card Maker</h1>
-    <p>Choose a template → Fill details → Generate Card → Customize QR → Manage cards</p>
+    <p>Choose a template → Fill details → Preview your card</p>
   </header>
 
   <main class="wrap">
@@ -28,28 +28,38 @@
       <div class="step2">
         <form id="form" autocomplete="off">
           <div class="cols">
+            <div class="col">
             <div class="group">
               <h3>Your Name</h3>
               <input name="name" placeholder="User Name">
               <input name="website" placeholder="Your Website (https://)">
             </div>
             <div class="group">
+              <h3>Contacts</h3>
+              <input name="mobile" type="tel" placeholder="Mobile Number">
+              <div class="pair"><input name="support" type="tel" placeholder="Customer Support"><input name="sales" type="tel" placeholder="Sales Support"></div>
+              <label>Email<input name="email" type="email" placeholder="Your Email (username@email.com)"></label>
+            </div>
+            </div>
+            <div class="col">
+            <div class="group">
               <h3>Organization</h3>
               <input name="org" placeholder="Company Name">
               <input name="position" placeholder="Position">
-            </div>
-            <div class="group">
-              <h3>Contacts</h3>
-              <div class="pair"><input name="mobile" placeholder="Phone (Mobile)"><input name="work" placeholder="Phone (Work)"></div>
-              <div class="pair"><input name="phone" placeholder="Phone"><input name="fax" placeholder="Fax"></div>
-              <div class="pair"><input name="support" type="tel" placeholder="Customer Support" title="Customer Support Phone"><input name="sales" type="tel" placeholder="Sales Support" title="Sales Support Phone"></div>
-              <input name="email" type="email" placeholder="Your Email (username@email.com)">
+              <div class="box img-pick">
+                <div class="drop" id="logoDrop"><i class="fa-regular fa-building"></i><img id="logoThumb" alt=""></div>
+                <div class="stack">
+                  <label class="btn primary">Upload company logo<input type="file" id="logoInput" accept="image/*" hidden></label>
+                  <button type="button" class="btn ghost" id="logoRemove">Remove logo</button>
+                </div>
+              </div>
             </div>
             <div class="group">
               <h3>Address</h3>
               <div class="pair"><input name="country" placeholder="Country"><input name="state" placeholder="State"></div>
               <input name="street" placeholder="Street">
-              <div class="pair"><input name="city" placeholder="City"><input name="zip" placeholder="Zipcode"></div>
+              <div class="pair"><input name="city" placeholder="City"><input name="zip" placeholder="Zip Code"></div>
+            </div>
             </div>
           </div>
 
@@ -91,30 +101,32 @@
 
           <div class="cols">
             <div class="group">
-              <h3>Company Logo</h3>
-              <div class="box img-pick">
-                <div class="drop" id="logoDrop"><i class="fa-regular fa-building"></i><img id="logoThumb" alt=""></div>
-                <div class="stack">
-                  <label class="btn primary">Upload<input type="file" id="logoInput" accept="image/*" hidden></label>
-                  <button type="button" class="btn ghost" id="logoRemove">Remove logo</button>
-                </div>
-              </div>
-            </div>
-            <div class="group">
               <h3>Font Family</h3>
               <select name="font" id="fontSelect"></select>
             </div>
+            <div class="group">
+              <h3>Button Color</h3>
+              <div class="box btn-box">
+                <label class="radio"><input type="checkbox" name="btnSame" checked> Same as background</label>
+                <div class="btn-own">
+                  <div class="radios">
+                    <label class="radio"><input type="radio" name="btnType" value="solid" checked> Solid Color</label>
+                    <label class="radio"><input type="radio" name="btnType" value="gradient"> Gradient</label>
+                  </div>
+                  <div class="color-row">
+                    <input type="color" name="btnColor" value="#4a87e0"><input name="hexBtn" class="hex" value="#4a87e0" maxlength="7">
+                    <button type="button" class="swap grad-only" id="swapBtnColors" title="Swap colors"><i class="fa-solid fa-right-left"></i></button>
+                    <input type="color" name="btnColor2" value="#c03e4a" class="grad-only"><input name="hexBtn2" class="hex grad-only" value="#c03e4a" maxlength="7">
+                  </div>
+                  <div class="grad-type grad-only">
+                    <span>Gradient Type</span>
+                    <div id="btnGradTypes" class="grad-options"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="group">
-            <h3>Add Links and Connections</h3>
-            <div class="social-bar">
-              <button type="button" class="arrow" data-scroll="-1"><i class="fa-solid fa-chevron-left"></i></button>
-              <div class="social-picker" id="socialPicker"></div>
-              <button type="button" class="arrow" data-scroll="1"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
-            <div id="socialInputs" class="social-inputs"></div>
-          </div>
         </form>
 
         <aside class="phone-col">
@@ -127,186 +139,9 @@
         </aside>
       </div>
     </section>
-
-    <!-- STEP 3 -->
-    <section class="step">
-      <div class="step-title"><span class="badge">STEP 3</span> Generate and publish the card</div>
-      <div class="step3">
-        <div class="box">
-          <h3><i class="fa-brands fa-github"></i> GitHub connection</h3>
-          <div class="pair">
-            <label>GitHub username<input id="ghUser" placeholder="tarun1009200"></label>
-            <label>Card repository<input id="ghRepo" placeholder="my-vcard"></label>
-          </div>
-          <div id="signInBox" class="actions left" hidden>
-            <button type="button" class="btn primary" id="signInGh"><i class="fa-brands fa-github"></i> Sign in with GitHub</button>
-            <button type="button" class="btn ghost" id="signOutGh" hidden>Sign out</button>
-          </div>
-          <p class="status" id="connStatus"></p>
-          <details id="tokenOption">
-            <summary>Advanced: token se connect karo</summary>
-            <label>Fine-grained access token
-              <input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-            </label>
-            <label class="radio"><input type="checkbox" id="rememberToken"> Is device par token yaad rakho</label>
-            <div class="actions left">
-              <button type="button" class="btn primary" id="connectGh"><i class="fa-solid fa-plug"></i> Connect</button>
-              <button type="button" class="btn ghost" id="forgetToken">Forget token</button>
-            </div>
-            <p class="hint"><b>Token kaise banayein (ek baar):</b></p>
-            <ol class="steps">
-              <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> kholo.</li>
-              <li>Name: <code>vcard-maker</code>, Expiration: 90 days.</li>
-              <li>Repository access: <b>Only select repositories</b> → sirf <code>my-vcard</code>.</li>
-              <li>Repository permissions: <b>Contents</b> Read and write, <b>Workflows</b> Read and write, <b>Pages</b> Read-only.</li>
-              <li><b>Generate token</b> → token copy karke upar wale box mein paste karo.</li>
-            </ol>
-            <p class="hint">Token sirf aapke browser mein rehta hai. Ye code, repository ya QR mein kabhi nahi jaata. Token kisi ko mat bhejna. Kabhi leak ho jaaye to GitHub settings se use turant delete kar do.</p>
-          </details>
-          <div id="setupBox" class="setup" hidden></div>
-        </div>
-
-        <div class="box">
-          <div class="box-head">
-            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Card</h3>
-            <span class="pill state" id="publishState" data-state="draft">Draft</span>
-          </div>
-          <ul id="formErrors" class="errors" hidden></ul>
-          <label class="radio warn"><input type="checkbox" id="publicOk"> <span>Main samajhta hoon ki card ki details aur photo <b>public</b> hongi: link wala koi bhi unhe dekh sakta hai, aur ye public repository ki history mein bhi rehti hain.</span></label>
-          <button type="button" class="btn success wide" id="generateCard"><i class="fa-solid fa-rocket"></i> <span>Generate Card</span></button>
-          <p class="status" id="publishStatus"></p>
-          <div id="publishResult" class="result" hidden>
-            <span class="lbl">Card link</span>
-            <div class="link-row"><a id="resultUrl" target="_blank" rel="noopener"></a><button type="button" class="btn ghost" id="copyResult"><i class="fa-regular fa-copy"></i></button></div>
-            <div class="actions left">
-              <button type="button" class="btn ghost" id="resultQr"><i class="fa-solid fa-qrcode"></i> QR (PNG)</button>
-              <button type="button" class="btn ghost" id="resultVcf"><i class="fa-regular fa-address-card"></i> Contact (.vcf)</button>
-            </div>
-            <p class="hint">QR ka design Step 4 mein badal sakte ho. Wahan link apne aap is card par set ho jaata hai.</p>
-          </div>
-
-          <details>
-            <summary>Manual option: ZIP download karke khud upload karo</summary>
-            <h3>Publish mode</h3>
-            <label class="radio block"><input type="radio" name="mode" value="single" checked> <b>Single card</b>: current card opens on the main link <code id="urlSingle"></code></label>
-            <label class="radio block"><input type="radio" name="mode" value="multi"> <b>Multiple cards</b>: all saved drafts, each on its own link <code id="urlMulti"></code></label>
-            <button class="btn ghost wide" id="downloadZip"><i class="fa-solid fa-file-zipper"></i> Download Website ZIP</button>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <!-- STEP 4 -->
-    <section class="step">
-      <div class="step-title"><span class="badge">STEP 4</span> Customize your QR code</div>
-      <div class="step4">
-        <div class="qr-left">
-          <label class="link-label">Your Card Link<input id="qrLink" placeholder="https://tarun1009200.github.io/my-vcard/"></label>
-          <div class="tabs" id="qrTabs">
-            <button type="button" data-tab="pattern" class="on"><i class="fa-solid fa-qrcode"></i> Pattern</button>
-            <button type="button" data-tab="eyes"><i class="fa-regular fa-eye"></i> Eyes</button>
-            <button type="button" data-tab="logo"><i class="fa-regular fa-image"></i> Logo</button>
-            <button type="button" data-tab="colors"><i class="fa-solid fa-sliders"></i> Colors</button>
-            <button type="button" data-tab="frame"><i class="fa-regular fa-square"></i> Frame</button>
-            <button type="button" data-tab="presets"><i class="fa-solid fa-table-cells-large"></i> Templates</button>
-          </div>
-
-          <div class="tab-panel" data-panel="pattern"><div class="tiles" id="patternTiles"></div></div>
-
-          <div class="tab-panel" data-panel="eyes" hidden>
-            <h4>Eye frame</h4><div class="tiles" id="eyeFrameTiles"></div>
-            <h4>Eye ball</h4><div class="tiles" id="eyeBallTiles"></div>
-          </div>
-
-          <div class="tab-panel" data-panel="logo" hidden>
-            <div class="tiles" id="logoTiles">
-              <button type="button" class="tile" data-logo="none"><i class="fa-solid fa-xmark"></i><span>None</span></button>
-              <button type="button" class="tile" data-logo="company"><i class="fa-regular fa-building"></i><span>Company logo</span></button>
-              <button type="button" class="tile" data-logo="photo"><i class="fa-regular fa-user"></i><span>Your photo</span></button>
-              <label class="tile" data-logo="custom"><i class="fa-solid fa-upload"></i><span>Upload</span><input type="file" id="qrLogoInput" accept="image/*" hidden></label>
-            </div>
-            <div class="box opts">
-              <label>Logo size <input type="range" id="logoSize" min="0.2" max="0.5" step="0.05"></label>
-              <label class="radio"><input type="checkbox" id="clearBehind"> Remove dots behind logo</label>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-panel="colors" hidden>
-            <div class="box opts">
-              <h4>Pattern color</h4>
-              <div class="radios">
-                <label class="radio"><input type="radio" name="dotsFill" value="solid" checked> Solid Color</label>
-                <label class="radio"><input type="radio" name="dotsFill" value="gradient"> Gradient</label>
-              </div>
-              <div class="color-row">
-                <input type="color" data-qr="dot1"><input class="hex" data-qr-hex="dot1" maxlength="7">
-                <span id="dot2Wrap" class="color-row"><input type="color" data-qr="dot2"><input class="hex" data-qr-hex="dot2" maxlength="7"></span>
-              </div>
-              <h4>Eye color</h4>
-              <div class="color-row"><input type="color" data-qr="eyeColor"><input class="hex" data-qr-hex="eyeColor" maxlength="7"></div>
-              <h4>Background color</h4>
-              <div class="color-row"><input type="color" data-qr="bg"><input class="hex" data-qr-hex="bg" maxlength="7"></div>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-panel="frame" hidden>
-            <p class="info"><i class="fa-solid fa-circle-info"></i> A QR code with a frame and call-to-action gets more scans.</p>
-            <div class="tiles big" id="frameTiles"></div>
-            <div class="box opts">
-              <h4>Frame color</h4>
-              <div class="color-row"><input type="color" data-qr="frameColor"><input class="hex" data-qr-hex="frameColor" maxlength="7"></div>
-              <div class="pair">
-                <label>Frame text (max 15 characters)<input id="frameText" maxlength="15"></label>
-                <label>Frame text font<select id="frameFont"></select></label>
-              </div>
-            </div>
-          </div>
-
-          <div class="tab-panel" data-panel="presets" hidden><div class="tiles big" id="presetTiles"></div></div>
-        </div>
-
-        <aside class="qr-right">
-          <p class="hint center">Always scan to test that your QR code works.</p>
-          <div class="qr-preview"><img id="qrPreview" alt="QR code preview"></div>
-          <div class="radios formats">
-            <label class="radio"><input type="radio" name="qrFormat" value="png" checked> PNG</label>
-            <label class="radio"><input type="radio" name="qrFormat" value="svg"> SVG</label>
-            <label class="radio"><input type="radio" name="qrFormat" value="jpeg"> JPEG</label>
-          </div>
-          <input id="qrName" placeholder="Name your QR Code (optional)">
-          <button class="btn success wide" id="downloadQr"><i class="fa-solid fa-download"></i> Download</button>
-        </aside>
-      </div>
-    </section>
-
-    <!-- STEP 5 -->
-    <section class="step">
-      <div class="step-title"><span class="badge">STEP 5</span> Card Manager</div>
-      <div class="step3">
-        <div class="box">
-          <div class="box-head">
-            <h3><i class="fa-solid fa-globe"></i> Published cards (online)</h3>
-            <button type="button" class="btn ghost small" id="refreshPublished"><i class="fa-solid fa-rotate"></i> Refresh</button>
-          </div>
-          <ul id="publishedList" class="card-list"></ul>
-          <p class="hint">Ye list GitHub repository ki <code>cards.json</code> se aati hai. Edit, Deactivate aur Delete ke liye token se connect karna zaroori hai.</p>
-        </div>
-        <div class="box">
-          <h3><i class="fa-solid fa-layer-group"></i> Saved drafts (sirf is browser mein)</h3>
-          <ul id="cardList" class="card-list"></ul>
-          <p class="hint">Draft save karne se card online <b>publish nahi hota</b>. Publish karne ke liye Step 3 mein <b>Generate Card</b> dabao.</p>
-        </div>
-      </div>
-    </section>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
   <script src="card-template.js"></script>
-  <script src="qr-designer.js"></script>
-  <script src="publish-kit.js"></script>
-  <script src="publisher.js"></script>
   <script src="generator.js"></script>
-  <script src="manager.js"></script>
 </body>
 </html>

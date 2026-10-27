@@ -11,6 +11,7 @@ const TEMPLATES = [
   { key: "floating", label: "Floating" },
   { key: "spotlight", label: "Spotlight" },
   { key: "cover", label: "Cover Photo" },
+  { key: "modern", label: "Modern" },
 ];
 
 const GRADIENTS = [
@@ -117,6 +118,29 @@ h1 { margin-top: 14px; }
 .btns a { background: var(--btn); color: #fff; border-radius: 20px; padding: 9px; }
 .list { padding: 10px 0; }
 `,
+  modern: `.card { background: #fff; }
+.top { position: relative; }
+.cover { height: 320px; background: var(--hero); display: grid; place-items: end center; overflow: hidden; }
+.cover img { width: 100%; height: 100%; object-fit: cover; }
+.cover > i { font-size: 220px; color: rgba(255,255,255,.85); margin-bottom: -22px; }
+.curve { position: absolute; left: 0; bottom: -1px; width: 100%; height: 96px; }
+.curve .fill { fill: #fff; }
+.curve .line { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+/* Sits on the rising end of the curve, half over the photo. */
+.org-badge { position: absolute; right: 16px; bottom: 34px; width: 76px; height: 76px; border-radius: 50%; background: #fff; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22); display: grid; place-items: center; overflow: hidden; font-size: 34px; font-weight: 700; color: var(--accent); }
+.org-badge img { width: 80%; height: 80%; object-fit: contain; }
+.body { padding: 0 24px 0; }
+h1 { font-size: 25px; line-height: 1.2; }
+.sub { color: #5b6676; opacity: 1; font-size: 15px; margin-top: 6px; }
+.sub + .sub { color: #1c2430; font-weight: 600; margin-top: 2px; }
+.desc { text-align: left; color: #3d4756; font-size: 14px; border-top: 1px solid #e1e6ed; margin-top: 16px; padding-top: 16px; }
+.btns { gap: 8px; margin-top: 16px; }
+.btns a { background: var(--btn); color: #fff; border-radius: 8px; padding: 10px 4px; }
+.list { padding: 8px 8px; }
+.list.lined a { padding: 12px 16px; border-bottom: 0; }
+.list .ic { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; background: color-mix(in srgb, var(--accent) 14%, #fff); }
+.save { border-radius: 10px; }
+`,
 };
 
 const CARD_JS = `// Share button: uses the phone's native share sheet, falls back to copying the link.
@@ -160,6 +184,15 @@ function heroBackground(c) {
   return g.css(c.color1, c.color2);
 }
 
+// Cards without their own button color use the background, as before.
+function buttonBackground(c) {
+  const isHex = (s) => /^#[0-9a-f]{6}$/i.test(s || "");
+  if (!isHex(c.btnColor)) return heroBackground(c);
+  if (c.btnType !== "gradient" || !isHex(c.btnColor2)) return c.btnColor;
+  const g = GRADIENTS.find((x) => x.key === c.btnGradType) || GRADIENTS[1];
+  return g.css(c.btnColor, c.btnColor2);
+}
+
 function fontLink(font) {
   return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font).replace(/%20/g, "+")}:wght@400;500;700&display=swap`;
 }
@@ -175,14 +208,18 @@ function cardParts(c, preview) {
 
   return {
     photoSrc,
+    photoAlt: c.name || "",
     avatar: photoSrc ? `<img class="avatar" src="${photoSrc}" alt="${esc(c.name)}">` : `<div class="avatar"><i class="fa-solid fa-user"></i></div>`,
     logo: logoSrc ? `<img class="logo" src="${logoSrc}" alt="${esc(c.org)} logo">` : "",
+    // Round badge on the Modern cover: the company logo, or the company's first letter.
+    orgBadge: logoSrc ? `<div class="org-badge"><img src="${logoSrc}" alt="${esc(c.org)} logo"></div>`
+      : (c.org || "").trim() ? `<div class="org-badge">${esc(c.org.trim()[0].toUpperCase())}</div>` : "",
     name: `<h1>${esc(c.name || "Your Full Name")}</h1>`,
     subLine: c.position || c.org ? `<p class="sub">${esc([c.position, c.org].filter(Boolean).join(" - "))}</p>` : "",
     subLines: (c.position ? `<p class="sub">${esc(c.position)}</p>` : "") + (c.org ? `<p class="sub">${esc(c.org)}</p>` : ""),
     desc: c.description ? `<p class="desc">${esc(c.description)}</p>` : "",
     buttons: `<nav class="btns">${[
-      (c.mobile || c.phone || c.work) && `<a href="${telHref(c.mobile || c.phone || c.work)}"><i class="fa-solid fa-phone"></i>Phone</a>`,
+      (c.mobile || c.phone) && `<a href="${telHref(c.mobile || c.phone)}"><i class="fa-solid fa-phone"></i>Phone</a>`,
       c.email && `<a href="mailto:${esc(c.email)}"><i class="fa-solid fa-envelope"></i>Email</a>`,
       c.website && `<a href="${esc(webHref(c.website))}" target="_blank" rel="noopener"><i class="fa-solid fa-globe"></i>Website</a>`,
     ].filter(Boolean).join("")}</nav>`,
@@ -192,10 +229,8 @@ function cardParts(c, preview) {
       c.sales && `<a href="${telHref(c.sales)}"><i class="fa-solid fa-phone"></i><div><b>Sales Support</b><small>${esc(c.sales)}</small></div></a>`,
     ].filter(Boolean).join("")}</nav>` : "",
     rows: [
-      c.mobile && row(telHref(c.mobile), "fa-phone", "Mobile Phone", c.mobile),
-      c.work && row(telHref(c.work), "fa-phone", "Phone (Work)", c.work),
-      c.phone && row(telHref(c.phone), "fa-phone", "Phone", c.phone),
-      c.fax && row(telHref(c.fax), "fa-fax", "Fax", c.fax),
+      // `phone` only exists on older cards that were not edited since it was removed.
+      (c.mobile || c.phone) && row(telHref(c.mobile || c.phone), "fa-phone", "Mobile Number", c.mobile || c.phone),
       c.email && row("mailto:" + esc(c.email), "fa-envelope", "Email", c.email),
       c.website && row(esc(webHref(c.website)), "fa-globe", "Website", c.website),
       address && row("https://maps.google.com/?q=" + encodeURIComponent(address), "fa-location-dot", "Address", address),
@@ -226,6 +261,18 @@ function templateBody(t, p) {
     <div class="body">${p.name}${p.subLine}${p.logo}${p.desc || "<div style='height:14px'></div>"}${p.buttons}</div>
     ${p.support}
     <ul class="list lined">${p.rows}</ul>`;
+    case "modern":
+      return `<div class="top">
+      <div class="cover">${p.photoSrc ? `<img src="${p.photoSrc}" alt="${esc(p.photoAlt)}">` : `<i class="fa-solid fa-user"></i>`}</div>
+      <svg class="curve" viewBox="0 0 400 96" preserveAspectRatio="none" aria-hidden="true">
+        <path class="fill" d="M0 80 C 150 92, 290 70, 400 14 L 400 96 L 0 96 Z"/>
+        <path class="line" d="M0 80 C 150 92, 290 70, 400 14"/>
+      </svg>
+      ${p.orgBadge}
+    </div>
+    <div class="body">${p.name}${p.subLines}${p.desc}${p.buttons}</div>
+    ${p.support}
+    <ul class="list lined">${p.rows}</ul>`;
     default: // wave
       return `<header class="hero">${p.name}${p.subLines}</header>
     <div class="top">${p.avatar}${p.logo}${p.desc}</div>
@@ -242,6 +289,7 @@ function buildCardHtml(c, mode) {
   const template = TEMPLATE_CSS[c.template] ? c.template : "wave";
   const p = cardParts(c, preview);
   const hero = heroBackground(c);
+  const btn = buttonBackground(c);
 
   const styleTag = preview ? `<style>${cardCss(template)}</style>` : `<link rel="stylesheet" href="assets/style.css">`;
   const scriptTag = preview ? "" : `<script src="assets/card.js"></script>`;
@@ -257,7 +305,7 @@ function buildCardHtml(c, mode) {
   <link rel="stylesheet" href="${fontLink(font)}">
   <link rel="stylesheet" href="${FONT_AWESOME}">
   ${styleTag}
-  <style>:root { --hero: ${hero}; --btn: ${hero}; --accent: ${c.color1}; --font: "${font}"; }</style>
+  <style>:root { --hero: ${hero}; --btn: ${btn}; --accent: ${c.color1}; --font: "${font}"; }</style>
 </head>
 <body>
   <main class="card t-${template}">
@@ -290,9 +338,7 @@ function buildVcf(c) {
     c.org && `ORG:${v(c.org)}`,
     c.position && `TITLE:${v(c.position)}`,
     c.mobile && `TEL;TYPE=CELL:${c.mobile}`,
-    c.work && `TEL;TYPE=WORK,VOICE:${c.work}`,
     c.phone && `TEL;TYPE=VOICE:${c.phone}`,
-    c.fax && `TEL;TYPE=FAX:${c.fax}`,
     // itemN.X-ABLabel gives the number a custom label in phone contacts.
     c.support && `item1.TEL;TYPE=WORK,VOICE:${c.support}`,
     c.support && "item1.X-ABLabel:Customer Support",
@@ -333,7 +379,7 @@ function addCardToZip(folder, c) {
 }
 
 const PHONE_FIELDS = {
-  mobile: "Phone (Mobile)", work: "Phone (Work)", phone: "Phone", fax: "Fax",
+  mobile: "Mobile Number",
   support: "Customer Support", sales: "Sales Support",
 };
 
@@ -350,23 +396,23 @@ function isWebUrl(u) {
 function validateCard(c) {
   const errors = {};
   const name = (c.name || "").trim();
-  if (!name) errors.name = "Naam zaroori hai.";
-  else if (name.length > 80) errors.name = "Naam 80 characters se chhota rakho.";
+  if (!name) errors.name = "Name is required.";
+  else if (name.length > 80) errors.name = "Name must be 80 characters or fewer.";
 
   for (const [f, label] of Object.entries(PHONE_FIELDS)) {
     const v = (c[f] || "").trim();
     if (!v) continue;
     const digits = v.replace(/\D/g, "").length;
-    if (!/^\+?[\d\s().-]+$/.test(v) || digits < 6 || digits > 15) errors[f] = `${label}: sahi phone number daalo (6–15 digits).`;
+    if (!/^\+?[\d\s().-]+$/.test(v) || digits < 6 || digits > 15) errors[f] = `${label}: enter a valid phone number (6–15 digits).`;
   }
-  if (c.email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(c.email.trim())) errors.email = "Email sahi format mein daalo, jaise name@gmail.com.";
-  if (c.website && !isWebUrl(webHref(c.website.trim()))) errors.website = "Website ka sahi link daalo, jaise www.propium.ai.";
+  if (c.email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(c.email.trim())) errors.email = "Enter a valid email address, e.g. name@gmail.com.";
+  if (c.website && !isWebUrl(webHref(c.website.trim()))) errors.website = "Enter a valid website link, e.g. www.propium.ai.";
   for (const s of SOCIALS) {
     const v = c.socials && c.socials[s.key] && c.socials[s.key].trim();
-    if (v && !isWebUrl(socialHref(s.key, v))) errors["social:" + s.key] = `${s.label}: sahi link daalo.`;
+    if (v && !isWebUrl(socialHref(s.key, v))) errors["social:" + s.key] = `${s.label}: enter a valid link.`;
   }
-  if (!["mobile", "work", "phone", "support", "sales", "email", "website"].some((f) => (c[f] || "").trim())) {
-    errors.contact = "Kam se kam ek phone number, email ya website daalo.";
+  if (!["mobile", "phone", "support", "sales", "email", "website"].some((f) => (c[f] || "").trim())) {
+    errors.contact = "Add at least one phone number, email or website.";
   }
   return errors;
 }

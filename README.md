@@ -3,10 +3,29 @@
 Digital visiting card generator, hosted on GitHub Pages:
 https://tarun1009200.github.io/vcard-maker/
 
+## Using the generator
+
+1. **Step 1:** choose a template: Classic, Wave, Floating, Spotlight, Cover Photo or Modern (cover photo, accent
+   curve and a round company-logo badge).
+2. **Step 2:** fill in name, organization (with an optional company logo), mobile, customer/sales support numbers,
+   email, address, description and photo. Pick the background and button colors (solid or gradient) and the font.
+   The phone preview updates live.
+3. **Save Draft** keeps the card in this browser; the last saved draft opens again on the next visit.
+   **New Card** clears the form.
+
+No build step is needed. Open `index.html` through any static web server, for example `npx serve .`, and visit the
+printed address.
+
+## Publishing (not wired into the page)
+
+The generator page no longer has the publish (Step 3) and card manager (Step 4) sections. The publishing code below
+is kept in the repository, with its tests, but `index.html` does not load `publisher.js`, `manager.js`,
+`publish-kit.js` or `qr-designer.js`.
+
 Published cards live in a separate repository, [my-vcard](https://github.com/tarun1009200/my-vcard), one folder per card:
 `https://tarun1009200.github.io/my-vcard/cards/<card-id>/`
 
-## How publishing works
+### How publishing worked
 
 ```
 generator (GitHub Pages) ──Session──▶ vcard-publisher (Vercel) ──GitHub token──▶ my-vcard repo ──Actions──▶ GitHub Pages
@@ -61,10 +80,10 @@ Set up from scratch:
 | File | Purpose |
 | --- | --- |
 | `index.html`, `generator.css` | Generator page |
-| `generator.js` | Form, live preview, templates, drafts, ZIP export, QR step wiring |
+| `generator.js` | Form, live preview, template picker, colors, images, drafts |
 | `card-template.js` | Card templates, vCard builder, validation |
-| `qr-designer.js` | QR code styling and frames |
-| `publisher.js` | GitHub API client and publish / edit / deactivate / delete |
-| `publish-kit.js` | Workflow and card checker added to `my-vcard` |
-| `manager.js` | Sign-in, Generate Card states and the published cards dashboard |
+| `qr-designer.js` | QR code styling and frames (not loaded by the page) |
+| `publisher.js` | GitHub API client and publish / edit / deactivate / delete (not loaded by the page) |
+| `publish-kit.js` | Workflow and card checker added to `my-vcard` (not loaded by the page) |
+| `manager.js` | Sign-in, Generate Card states and the published cards dashboard (not loaded by the page) |
 | `vcard-publisher/` | Vercel publishing server |

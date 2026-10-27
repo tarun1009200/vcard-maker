@@ -1,24 +1,22 @@
 const STORE_KEY = "vcard-maker.cards";
-const SETTINGS_KEY = "vcard-maker.settings";
-const FIELDS = ["name", "org", "website", "position", "mobile", "work", "phone", "fax", "support", "sales", "email",
+const FIELDS = ["name", "org", "website", "position", "mobile", "support", "sales", "email",
   "country", "state", "street", "city", "zip", "description", "color1", "color2", "font"];
 
 // Shown in the previews until the user starts typing, like a sample card.
 const PLACEHOLDER = {
   name: "Your Full Name", position: "Position", org: "Company Name", description: "Personal Description",
-  mobile: "Mobile Phone", work: "Mobile Phone (Work)", phone: "Phone", email: "Email", website: "Website",
+  mobile: "Mobile Number", email: "Email", website: "Website",
 };
 
 const $ = (id) => document.getElementById(id);
 const form = $("form");
 
 let current = blankCard();
-let qrState = { ...QR_DEFAULTS };
 
 function blankCard() {
   return {
     id: null, template: "wave", bgType: "solid", gradType: "diagonal", color1: "#4a87e0", color2: "#c03e4a",
-    font: "Roboto", photo: "", logo: "", socials: {},
+    font: "Roboto", btnColor: "", btnType: "solid", btnColor2: "", btnGradType: "diagonal", photo: "", logo: "", socials: {},
   };
 }
 
@@ -36,39 +34,24 @@ function storeCards(cards) {
     localStorage.setItem(STORE_KEY, JSON.stringify(cards));
     return true;
   } catch (e) {
-    alert("Browser storage full ho gaya. Kuch purane cards delete karo ya chhoti images use karo.");
+    alert("Browser storage is full. Delete some old cards or use smaller images.");
     return false;
   }
-}
-
-function saveSettings() {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-      user: $("ghUser").value, repo: $("ghRepo").value,
-      mode: document.querySelector("input[name=mode]:checked").value,
-      qr: qrState,
-    }));
-  } catch (e) {}
-}
-
-function loadSettings() {
-  try {
-    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-    if (!s) return;
-    $("ghUser").value = s.user || $("ghUser").value;
-    $("ghRepo").value = s.repo || $("ghRepo").value;
-    document.querySelector(`input[name=mode][value=${s.mode || "single"}]`).checked = true;
-    qrState = { ...QR_DEFAULTS, ...(s.qr || {}) };
-  } catch (e) {}
 }
 
 // ---------- form <-> card ----------
 function readForm() {
   FIELDS.forEach((f) => (current[f] = form.elements[f].value.trim()));
   current.bgType = form.elements.bgType.value;
+  // Empty means the buttons follow the background.
+  current.btnColor = form.elements.btnSame.checked ? "" : form.elements.btnColor.value;
+  current.btnType = form.elements.btnType.value;
+  current.btnColor2 = form.elements.btnColor2.value;
   delete current.location; // migrated into `street` by fillForm
+  delete current.fax; // no longer collected; dropped from older cards when they are edited
+  delete current.work;
+  delete current.phone; // migrated into `mobile` by fillForm
   current.socials = {};
-  $("socialInputs").querySelectorAll("input[data-social]").forEach((i) => (current.socials[i.dataset.social] = i.value.trim()));
 }
 
 function fillForm(c) {
@@ -77,11 +60,16 @@ function fillForm(c) {
   form.elements.color2.value = form.elements.hex2.value = c.color2 || "#c03e4a";
   form.elements.font.value = c.font || "Roboto";
   form.elements.bgType.value = c.bgType || "solid";
+  form.elements.btnSame.checked = !c.btnColor;
+  form.elements.btnColor.value = form.elements.hexBtn.value = c.btnColor || c.color1 || "#4a87e0";
+  form.elements.btnColor2.value = form.elements.hexBtn2.value = c.btnColor2 || c.color2 || "#c03e4a";
+  form.elements.btnType.value = c.btnType || "solid";
   // Older cards stored the whole address in `location`.
   if (c.location && !c.street) form.elements.street.value = c.location;
+  // Older cards also had a separate `phone`; it fills in for a missing mobile number.
+  if (c.phone && !c.mobile) form.elements.mobile.value = c.phone;
   setThumb($("photoThumb"), c.photo);
   setThumb($("logoThumb"), c.logo);
-  renderSocialInputs();
 }
 
 function setThumb(img, src) {
@@ -90,7 +78,10 @@ function setThumb(img, src) {
 
 // Color picker and hex text box mirror each other.
 function syncColor(target) {
-  const pairs = { color1: "hex1", color2: "hex2", hex1: "color1", hex2: "color2" };
+  const pairs = {
+    color1: "hex1", color2: "hex2", btnColor: "hexBtn", btnColor2: "hexBtn2",
+    hex1: "color1", hex2: "color2", hexBtn: "btnColor", hexBtn2: "btnColor2",
+  };
   const other = pairs[target.name];
   if (!other) return;
   if (target.type === "color") form.elements[other].value = target.value;
@@ -103,32 +94,33 @@ function previewCard() {
   return c;
 }
 
-// Field errors show while typing; "required" errors only after the first Generate Card click.
-let showAllErrors = false;
-
+// Fields with an invalid value (e.g. letters in a phone number) get a red border while typing.
 function showValidation() {
-  const errors = validateCard(current);
-  const visible = Object.entries(errors).filter(([f]) => showAllErrors || (f !== "name" && f !== "contact"));
   form.querySelectorAll(".invalid").forEach((el) => el.classList.remove("invalid"));
-  for (const [f] of visible) {
-    const el = f.startsWith("social:") ? $("socialInputs").querySelector(`[data-social="${f.slice(7)}"]`) : form.elements[f];
+  for (const f of Object.keys(validateCard(current))) {
+    const el = f !== "name" && form.elements[f]; // an empty name is not an error while filling in
     if (el) el.classList.add("invalid");
   }
-  const list = $("formErrors");
-  list.innerHTML = visible.map(([, msg]) => `<li>${esc(msg)}</li>`).join("");
-  list.hidden = !visible.length;
-  return errors;
 }
 
 function render() {
   readForm();
   showValidation();
   document.querySelector(".bg-box").classList.toggle("gradient", current.bgType === "gradient");
+  // While "Same as background" is on, the button controls track the background so unticking starts from it.
+  const same = form.elements.btnSame.checked;
+  if (same) {
+    form.elements.btnType.value = current.bgType;
+    form.elements.btnColor.value = form.elements.hexBtn.value = current.color1;
+    form.elements.btnColor2.value = form.elements.hexBtn2.value = current.color2;
+    current.btnGradType = current.gradType;
+  }
+  const btnBox = document.querySelector(".btn-box");
+  btnBox.classList.toggle("same", same);
+  btnBox.classList.toggle("gradient", form.elements.btnType.value === "gradient");
   renderGradTypes();
   $("preview").srcdoc = buildCardHtml(previewCard(), "preview");
   renderTemplateThumbs();
-  updateUrls();
-  renderQr();
 }
 
 // ---------- STEP 1: templates ----------
@@ -155,24 +147,36 @@ const renderTemplateThumbs = debounce(() => {
   });
 }, 300);
 
-// ---------- STEP 2: background, images, socials ----------
+// ---------- STEP 2: background, images ----------
+// The same gradient controls drive the background and the buttons.
+const GRAD_PICKERS = [
+  { list: "gradTypes", key: "gradType", swap: "swapColors", a: ["color1", "hex1"], b: ["color2", "hex2"] },
+  { list: "btnGradTypes", key: "btnGradType", swap: "swapBtnColors", a: ["btnColor", "hexBtn"], b: ["btnColor2", "hexBtn2"] },
+];
+
 function renderGradTypes() {
-  $("gradTypes").innerHTML = GRADIENTS.map((g) =>
-    `<button type="button" data-grad="${g.key}" class="${g.key === current.gradType ? "on" : ""}" style="background:${g.css("#111", "#eee")}" title="${g.key}"></button>`).join("");
+  for (const p of GRAD_PICKERS) {
+    $(p.list).innerHTML = GRADIENTS.map((g) =>
+      `<button type="button" data-grad="${g.key}" class="${g.key === current[p.key] ? "on" : ""}" style="background:${g.css("#111", "#eee")}" title="${g.key}"></button>`).join("");
+  }
 }
 
-$("gradTypes").addEventListener("click", (e) => {
-  if (!e.target.dataset.grad) return;
-  current.gradType = e.target.dataset.grad;
-  render();
-});
+for (const p of GRAD_PICKERS) {
+  $(p.list).addEventListener("click", (e) => {
+    if (!e.target.dataset.grad) return;
+    current[p.key] = e.target.dataset.grad;
+    render();
+  });
 
-$("swapColors").addEventListener("click", () => {
-  const a = form.elements.color1.value;
-  form.elements.color1.value = form.elements.hex1.value = form.elements.color2.value;
-  form.elements.color2.value = form.elements.hex2.value = a;
-  render();
-});
+  $(p.swap).addEventListener("click", () => {
+    const [a, hexA] = p.a.map((n) => form.elements[n]);
+    const [b, hexB] = p.b.map((n) => form.elements[n]);
+    const first = a.value;
+    a.value = hexA.value = b.value;
+    b.value = hexB.value = first;
+    render();
+  });
+}
 
 // Photo: square-cropped 400px JPEG. Logo: fit within 300px, PNG (keeps transparency).
 function loadImage(file, isLogo) {
@@ -219,44 +223,7 @@ function bindImage(inputId, removeId, thumbId, key, isLogo) {
   });
 }
 
-function renderSocialPicker() {
-  $("socialPicker").innerHTML = SOCIALS.map((s) =>
-    `<button type="button" title="${s.label}" data-key="${s.key}" class="${s.key in (current.socials || {}) ? "on" : ""}"><i class="${s.icon}"></i></button>`).join("");
-}
-
-function renderSocialInputs() {
-  const socials = current.socials || {};
-  $("socialInputs").innerHTML = SOCIALS.filter((s) => s.key in socials).map((s) => `
-    <div class="s-row">
-      <i class="${s.icon}"></i>
-      <input data-social="${s.key}" value="${esc(socials[s.key])}" placeholder="${s.label} ${s.key === "whatsapp" ? "number or link" : "profile link"}">
-      <button type="button" data-remove="${s.key}" title="Remove">&times;</button>
-    </div>`).join("");
-  renderSocialPicker();
-}
-
-$("socialPicker").addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
-  readForm();
-  if (!(btn.dataset.key in current.socials)) current.socials[btn.dataset.key] = "";
-  renderSocialInputs();
-  $("socialInputs").querySelector(`[data-social="${btn.dataset.key}"]`).focus();
-});
-
-$("socialInputs").addEventListener("click", (e) => {
-  const key = e.target.dataset.remove;
-  if (!key) return;
-  readForm();
-  delete current.socials[key];
-  renderSocialInputs();
-  render();
-});
-
-document.querySelectorAll(".arrow").forEach((b) =>
-  b.addEventListener("click", () => $("socialPicker").scrollBy({ left: b.dataset.scroll * 200, behavior: "smooth" })));
-
-// ---------- My Cards ----------
+// ---------- drafts ----------
 function uniqueId(name, cards) {
   const base = slugify(name || "card");
   let id = base, n = 2;
@@ -273,212 +240,8 @@ function saveCurrent() {
   const i = cards.findIndex((c) => c.id === current.id);
   if (i >= 0) cards[i] = { ...current }; else cards.push({ ...current });
   if (storeCards(cards)) {
-    $("saveMsg").textContent = `Draft saved as "${current.id}" (sirf is browser mein, publish nahi hua).`;
-    renderList();
-    updateUrls();
+    $("saveMsg").textContent = `Draft saved as "${current.id}" (in this browser). It opens again the next time you visit.`;
   }
-}
-
-function renderList() {
-  const cards = loadCards();
-  const list = $("cardList");
-  if (!cards.length) {
-    list.innerHTML = `<li class="empty">Abhi koi card save nahi hai.</li>`;
-    return;
-  }
-  list.innerHTML = cards.map((c) => `
-    <li class="${c.id === current.id ? "active" : ""}">
-      ${c.photo ? `<img src="${c.photo}" alt="">` : `<img alt="">`}
-      <div class="meta"><b>${esc(c.name || "Untitled")}</b><small>${esc(c.position || "")} · ${c.publishedId ? `published as ${esc(c.publishedId)}` : "draft, not published"}</small></div>
-      <button class="btn ghost" data-open="${c.id}">Edit</button>
-      <button class="btn ghost" data-del="${c.id}">Delete</button>
-    </li>`).join("");
-}
-
-$("cardList").addEventListener("click", (e) => {
-  const openId = e.target.dataset.open;
-  const delId = e.target.dataset.del;
-  if (openId) {
-    current = { ...blankCard(), ...loadCards().find((c) => c.id === openId) };
-    fillForm(current);
-    $("saveMsg").textContent = `Editing "${current.id}".`;
-    render();
-    renderList();
-    $("form").scrollIntoView({ behavior: "smooth" });
-  } else if (delId && confirm(`Delete card "${delId}"?`)) {
-    storeCards(loadCards().filter((c) => c.id !== delId));
-    if (current.id === delId) current.id = null;
-    renderList();
-    updateUrls();
-  }
-});
-
-// ---------- STEP 3: publish ----------
-function siteUrl() {
-  const user = $("ghUser").value.trim() || "username";
-  const repo = $("ghRepo").value.trim() || "repository";
-  return `https://${user.toLowerCase()}.github.io/${repo}/`;
-}
-
-function publishedUrl(id) {
-  return `${siteUrl()}cards/${id}/`;
-}
-
-function updateUrls() {
-  const base = siteUrl();
-  const cardUrl = `${base}cards/${current.id || "CARD-ID"}/`;
-  $("urlSingle").textContent = base;
-  $("urlMulti").textContent = cardUrl;
-  const mode = document.querySelector("input[name=mode]:checked").value;
-  // A published card always gets its own permanent link in the QR.
-  if (current.publishedId) $("qrLink").value = publishedUrl(current.publishedId);
-  else if ($("ghUser").value.trim() && $("ghRepo").value.trim()) $("qrLink").value = mode === "single" ? base : cardUrl;
-}
-
-async function downloadZip() {
-  readForm();
-  const mode = document.querySelector("input[name=mode]:checked").value;
-  // Files sit at the zip root so they can be uploaded to the repo as-is.
-  const root = new JSZip();
-
-  if (mode === "single") {
-    if (!current.name) return alert("Pehle apna naam bharo.");
-    addCardToZip(root, current);
-  } else {
-    const cards = loadCards();
-    if (!cards.length) return alert("Multiple mode ke liye pehle cards 'Save Draft' karo.");
-    cards.forEach((c) => addCardToZip(root.folder(`cards/${c.id}`), c));
-    root.file("index.html", buildDirectoryHtml(cards));
-  }
-  root.file(".nojekyll", "");
-
-  const blob = await root.generateAsync({ type: "blob" });
-  downloadBlob(blob, `${$("ghRepo").value.trim() || "my-vcard"}.zip`);
-}
-
-function downloadBlob(blob, filename) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
-// ---------- STEP 4: QR ----------
-const SAMPLE_LINK = "https://example.github.io/my-vcard/";
-let lastQrSvg = "";
-
-function qrLogoSrc() {
-  return { company: current.logo, photo: current.photo, custom: qrState.customLogo }[qrState.logo] || "";
-}
-
-const renderQr = debounce(async () => {
-  const link = $("qrLink").value.trim() || SAMPLE_LINK;
-  try {
-    lastQrSvg = await buildQrSvg(link, qrState, qrLogoSrc());
-    $("qrPreview").src = toDataUri(lastQrSvg);
-  } catch (e) {
-    console.error(e);
-  }
-}, 150);
-
-function qrChanged() {
-  syncQrControls();
-  saveSettings();
-  renderQr();
-}
-
-async function buildQrTiles() {
-  const tile = (attr, value, label) => `<button type="button" class="tile" ${attr}="${value}" title="${label}"><img alt=""></button>`;
-  $("patternTiles").innerHTML = QR_PATTERNS.map((p) => tile("data-pattern", p, p)).join("");
-  $("eyeFrameTiles").innerHTML = QR_EYE_FRAMES.map((p) => tile("data-eye-frame", p, p)).join("");
-  $("eyeBallTiles").innerHTML = QR_EYE_BALLS.map((p) => tile("data-eye-ball", p, p)).join("");
-  $("frameTiles").innerHTML = QR_FRAMES.map((f) => f === "none"
-    ? `<button type="button" class="tile" data-frame="none"><i class="fa-solid fa-xmark"></i></button>`
-    : tile("data-frame", f, f)).join("");
-  $("presetTiles").innerHTML = QR_PRESETS.map((p, i) => `<button type="button" class="tile" data-preset="${i}"><img alt=""><span>${p.label}</span></button>`).join("");
-  $("frameFont").innerHTML = QR_FRAME_FONTS.map((f) => `<option>${f}</option>`).join("");
-
-  const sample = (s) => renderQrSvg(SAMPLE_LINK, { ...QR_DEFAULTS, ...s }, "");
-  const set = (sel, uri) => (document.querySelector(sel + " img").src = uri);
-  for (const p of QR_PATTERNS) set(`[data-pattern="${p}"]`, await sample({ pattern: p }));
-  for (const p of QR_EYE_FRAMES) set(`[data-eye-frame="${p}"]`, await sample({ eyeFrame: p, eyeColor: "#1557b0" }));
-  for (const p of QR_EYE_BALLS) set(`[data-eye-ball="${p}"]`, await sample({ eyeBall: p, eyeColor: "#1557b0" }));
-  const plain = await sample({});
-  for (const f of QR_FRAMES.slice(1)) set(`[data-frame="${f}"]`, toDataUri(frameSvg(plain, { ...QR_DEFAULTS, frame: f })));
-  for (const [i, p] of QR_PRESETS.entries()) set(`[data-preset="${i}"]`, toDataUri(await buildQrSvg(SAMPLE_LINK, { ...QR_DEFAULTS, ...p.opts }, "")));
-}
-
-function syncQrControls() {
-  const mark = (sel, attr, value) => document.querySelectorAll(sel).forEach((t) => t.classList.toggle("on", t.getAttribute(attr) === value));
-  mark("[data-pattern]", "data-pattern", qrState.pattern);
-  mark("[data-eye-frame]", "data-eye-frame", qrState.eyeFrame);
-  mark("[data-eye-ball]", "data-eye-ball", qrState.eyeBall);
-  mark("[data-frame]", "data-frame", qrState.frame);
-  mark("[data-logo]", "data-logo", qrState.logo);
-  document.querySelectorAll("[data-qr]").forEach((i) => (i.value = qrState[i.dataset.qr]));
-  document.querySelectorAll("[data-qr-hex]").forEach((i) => { if (document.activeElement !== i) i.value = qrState[i.dataset.qrHex]; });
-  document.querySelector(`input[name=dotsFill][value=${qrState.dotsGradient ? "gradient" : "solid"}]`).checked = true;
-  $("dot2Wrap").style.display = qrState.dotsGradient ? "" : "none";
-  $("logoSize").value = qrState.logoSize;
-  $("clearBehind").checked = qrState.clearBehindLogo;
-  if (document.activeElement !== $("frameText")) $("frameText").value = qrState.frameText;
-  $("frameFont").value = qrState.frameFont;
-}
-
-function bindQrControls() {
-  $("qrTabs").addEventListener("click", (e) => {
-    const btn = e.target.closest("button");
-    if (!btn) return;
-    document.querySelectorAll("#qrTabs button").forEach((b) => b.classList.toggle("on", b === btn));
-    document.querySelectorAll(".tab-panel").forEach((p) => (p.hidden = p.dataset.panel !== btn.dataset.tab));
-  });
-
-  document.querySelector(".qr-left").addEventListener("click", (e) => {
-    const t = e.target.closest(".tile");
-    if (!t || t.dataset.logo === "custom") return;
-    if (t.dataset.pattern) qrState.pattern = t.dataset.pattern;
-    else if (t.dataset.eyeFrame) qrState.eyeFrame = t.dataset.eyeFrame;
-    else if (t.dataset.eyeBall) qrState.eyeBall = t.dataset.eyeBall;
-    else if (t.dataset.frame) qrState.frame = t.dataset.frame;
-    else if (t.dataset.preset) Object.assign(qrState, QR_PRESETS[t.dataset.preset].opts);
-    else if (t.dataset.logo) {
-      if (t.dataset.logo === "company" && !current.logo) return alert("Pehle Step 2 mein Company Logo upload karo.");
-      if (t.dataset.logo === "photo" && !current.photo) return alert("Pehle Step 2 mein Primary Photo upload karo.");
-      qrState.logo = t.dataset.logo;
-    }
-    qrChanged();
-  });
-
-  $("qrLogoInput").addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    qrState.customLogo = await loadImage(file, true);
-    qrState.logo = "custom";
-    e.target.value = "";
-    qrChanged();
-  });
-
-  document.querySelectorAll("[data-qr]").forEach((i) => i.addEventListener("input", () => { qrState[i.dataset.qr] = i.value; qrChanged(); }));
-  document.querySelectorAll("[data-qr-hex]").forEach((i) => i.addEventListener("input", () => {
-    if (/^#[0-9a-f]{6}$/i.test(i.value)) { qrState[i.dataset.qrHex] = i.value.toLowerCase(); qrChanged(); }
-  }));
-  document.querySelectorAll("input[name=dotsFill]").forEach((r) => r.addEventListener("change", () => { qrState.dotsGradient = r.value === "gradient"; qrChanged(); }));
-  $("logoSize").addEventListener("input", (e) => { qrState.logoSize = +e.target.value; qrChanged(); });
-  $("clearBehind").addEventListener("change", (e) => { qrState.clearBehindLogo = e.target.checked; qrChanged(); });
-  $("frameText").addEventListener("input", (e) => { qrState.frameText = e.target.value; qrChanged(); });
-  $("frameFont").addEventListener("change", (e) => { qrState.frameFont = e.target.value; qrChanged(); });
-  $("qrLink").addEventListener("input", renderQr);
-
-  $("downloadQr").addEventListener("click", async () => {
-    if (!$("qrLink").value.trim()) return alert("Pehle apna card link daalo (Step 3 mein username aur repo bharo).");
-    // Rebuild instead of using the debounced preview so the file matches the latest settings.
-    const svg = await buildQrSvg($("qrLink").value.trim(), qrState, qrLogoSrc());
-    const format = document.querySelector("input[name=qrFormat]:checked").value;
-    const name = slugify($("qrName").value || `qr-${current.id || "card"}`);
-    if (format === "svg") downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `${name}.svg`);
-    else downloadBlob(await rasterize(svg, `image/${format}`), `${name}.${format === "jpeg" ? "jpg" : "png"}`);
-  });
 }
 
 // ---------- wire up ----------
@@ -493,19 +256,13 @@ $("newCard").addEventListener("click", () => {
   fillForm(current);
   $("saveMsg").textContent = "";
   render();
-  renderList();
 });
-["ghUser", "ghRepo"].forEach((id) => $(id).addEventListener("input", () => { saveSettings(); updateUrls(); renderQr(); }));
-document.querySelectorAll("input[name=mode]").forEach((r) => r.addEventListener("change", () => { saveSettings(); updateUrls(); renderQr(); }));
-$("downloadZip").addEventListener("click", downloadZip);
-
-$("ghUser").value = "tarun1009200";
-$("ghRepo").value = "my-vcard";
-loadSettings();
 buildTemplatePicker();
-bindQrControls();
+// Reopen the most recently saved draft, if there is one.
+const lastDraft = loadCards().sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
+if (lastDraft) {
+  current = { ...blankCard(), ...lastDraft };
+  $("saveMsg").textContent = `Editing "${current.id}".`;
+}
 fillForm(current);
-syncQrControls();
 render();
-renderList();
-buildQrTiles().then(syncQrControls);

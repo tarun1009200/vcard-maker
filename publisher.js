@@ -13,11 +13,11 @@ class GitHubError extends Error {
 }
 
 function explainGitHubError(status, message) {
-  if (status === 401) return `Sign-in expire ho gaya ya token galat hai (${message}).`;
-  if (status === 429) return "Bahut saari requests ho gayi. Ek minute ruk kar dobara try karo.";
-  if (status === 403) return `Token ke paas is kaam ki permission nahi hai (${message}).`;
-  if (status === 404) return "Repository ya file nahi mili, ya token ko is repository ka access nahi hai.";
-  if (status === 409) return "Repository khaali hai. Pehle GitHub par ek README commit karo.";
+  if (status === 401) return `Your sign-in has expired or the token is invalid (${message}).`;
+  if (status === 429) return "Too many requests. Wait a minute and try again.";
+  if (status === 403) return `The token doesn't have permission to do this (${message}).`;
+  if (status === 404) return "The repository or file was not found, or the token doesn't have access to this repository.";
+  if (status === 409) return "The repository is empty. Commit a README on GitHub first.";
   return `GitHub error ${status}: ${message}`;
 }
 
@@ -181,7 +181,7 @@ async function publishCard(repo, card, editId) {
 
 async function loadPublishedCard(repo, id) {
   const rec = await repo.readJson(`cards/${id}/card.json`);
-  if (!rec) throw new Error(`Card "${id}" ka data (card.json) nahi mila.`);
+  if (!rec) throw new Error(`Data for card "${id}" (card.json) was not found.`);
   const { hasPhoto, hasLogo, updated, ...card } = rec;
   card.photo = hasPhoto ? "data:image/jpeg;base64," + ((await repo.readFile(`cards/${id}/assets/photo.jpg`)) || "") : "";
   card.logo = hasLogo ? "data:image/png;base64," + ((await repo.readFile(`cards/${id}/assets/logo.png`)) || "") : "";
@@ -215,7 +215,7 @@ async function deactivateCard(repo, id) {
   return commitChanges(repo, async (head) => {
     const registry = await readRegistry(repo, head.sha);
     const entry = registry.cards.find((c) => c.id === id);
-    if (!entry) throw new Error(`Card "${id}" registry mein nahi hai.`);
+    if (!entry) throw new Error(`Card "${id}" is not in the registry.`);
     entry.active = false;
     entry.updated = new Date().toISOString();
     const changes = [{ path: `cards/${id}/index.html`, base64: toBase64Text(inactivePageHtml(entry.name)) }];

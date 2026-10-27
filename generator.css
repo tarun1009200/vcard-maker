@@ -21,12 +21,14 @@ body { margin: 0; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", 
 .step { padding: 20px 0; border-bottom: 3px solid #d3dce8; }
 .step:last-child { border-bottom: 0; }
 .step-title { display: flex; align-items: center; gap: 12px; font-size: 16px; margin-bottom: 18px; }
-.badge { background: var(--badge); color: #fff; font-weight: 600; padding: 5px 14px; border-radius: 4px; letter-spacing: .5px; }
+.badge { flex: none; white-space: nowrap; background: var(--badge); color: #fff; font-weight: 600; padding: 5px 14px; border-radius: 4px; letter-spacing: .5px; }
 
 h3 { margin: 0; font-size: 14px; font-weight: 600; }
 h3 small { font-weight: 400; color: var(--muted); font-size: 11px; }
 h4 { margin: 4px 0; font-size: 13px; font-weight: 600; }
 label { font-size: 13px; font-weight: 500; display: flex; flex-direction: column; gap: 6px; }
+#form label:not(.radio):not(.btn) { font-size: 14px; font-weight: 600; } /* field headings match the section headings */
+#form label input { font-weight: 400; }
 input:not([type=radio]):not([type=color]):not([type=checkbox]):not([type=range]), textarea, select {
   font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; width: 100%; background: #fff; color: var(--text);
 }
@@ -47,8 +49,8 @@ textarea { resize: vertical; }
 code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; font-size: 12px; word-break: break-all; }
 
 /* STEP 1: templates */
-.templates { display: flex; gap: 22px; overflow-x: auto; padding: 10px 4px 6px; align-items: flex-start; }
-.tpl { flex: none; display: flex; flex-direction: column; align-items: center; gap: 14px; cursor: pointer; border: 0; background: none; padding: 0; font: inherit; }
+.templates { display: flex; gap: 22px; overflow-x: auto; padding: 10px 4px 6px; align-items: flex-start; scroll-snap-type: x proximity; }
+.tpl { flex: none; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 14px; cursor: pointer; border: 0; background: none; padding: 0; font: inherit; }
 .tpl .thumb { width: 160px; height: 320px; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 4px 14px rgba(20,50,100,.12); transition: transform .15s; position: relative; }
 .tpl iframe { width: 375px; height: 750px; border: 0; transform: scale(.4267); transform-origin: 0 0; pointer-events: none; }
 .tpl .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #8a94a3; background: #fff; }
@@ -57,9 +59,11 @@ code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; font-size: 12p
 .tpl span { font-size: 12px; color: var(--muted); }
 
 /* STEP 2: form + phone */
-.step2 { display: grid; grid-template-columns: 1fr 300px; gap: 28px; align-items: start; }
-#form { display: flex; flex-direction: column; gap: 18px; }
+.step2 { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+/* The form's own width (not the screen's) decides its columns, so it fits next to the preview on any screen. */
+#form { display: flex; flex-direction: column; gap: 18px; container-type: inline-size; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+.col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .group { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -72,27 +76,18 @@ code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; font-size: 12p
 .radios { display: flex; gap: 18px; flex-wrap: wrap; }
 .radio { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
 .radio.block { display: block; line-height: 1.6; }
-.color-row { display: flex; gap: 8px; align-items: center; }
-.color-row .hex { width: 100px !important; flex: 1; }
+/* Wraps the second color onto its own line when the box is narrow. */
+.color-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.color-row .hex { width: auto !important; flex: 1 1 110px; min-width: 0; }
 input[type=color] { width: 30px; height: 30px; border: 0; padding: 0; background: none; flex: none; cursor: pointer; }
 .swap { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
-.grad-type { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
+.grad-type { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
 .grad-options { display: flex; gap: 8px; }
 .grad-options button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .grad-options button.on { border-color: var(--green); box-shadow: 0 0 0 2px #fff inset; }
-.bg-box:not(.gradient) .grad-only { display: none; }
-
-.social-bar { display: flex; align-items: center; background: #fff; border-radius: 4px; }
-.social-picker { display: flex; gap: 6px; overflow-x: auto; padding: 8px 4px; scrollbar-width: none; flex: 1; }
-.social-picker::-webkit-scrollbar { display: none; }
-.social-picker button { flex: none; width: 36px; height: 36px; border-radius: 4px; border: 0; background: #f1f3f6; color: #4a5260; font-size: 17px; cursor: pointer; }
-.social-picker button.on { background: var(--blue); color: #fff; }
-.arrow { border: 0; background: none; color: #4a5260; cursor: pointer; padding: 0 8px; height: 36px; }
-.social-inputs { display: flex; flex-direction: column; gap: 8px; }
-.social-inputs:empty { display: none; }
-.s-row { display: flex; gap: 8px; align-items: center; }
-.s-row i { width: 38px; height: 38px; flex: none; border-radius: 4px; background: var(--blue); color: #fff; display: grid; place-items: center; }
-.s-row button { flex: none; border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+.bg-box:not(.gradient) .grad-only, .btn-box:not(.gradient) .grad-only { display: none; }
+.btn-own { display: flex; flex-direction: column; gap: 10px; }
+.btn-box.same .btn-own { display: none; }
 
 .phone-col { position: sticky; top: 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .phone { width: 290px; padding: 11px; border-radius: 44px; background: linear-gradient(145deg, #3a3d42, #0d0e10); box-shadow: 0 0 0 2px #9aa0a8, 0 12px 30px rgba(0,0,0,.3); }
@@ -150,35 +145,49 @@ details[open] { display: flex; flex-direction: column; gap: 8px; }
 .pill.on { background: #dcf5e4; color: #137a35; }
 .pill.off { background: #eceff3; color: #6b7684; }
 
-/* STEP 4: QR */
-.step4 { display: grid; grid-template-columns: 1fr 260px; gap: 28px; align-items: start; }
-.qr-left { display: flex; flex-direction: column; gap: 14px; }
-.tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.tabs button { font: inherit; font-size: 13px; border: 0; background: #d6dde7; color: var(--text); padding: 10px 4px; border-radius: 4px 4px 0 0; cursor: pointer; }
-.tabs button.on { background: var(--blue); color: #fff; }
-.tab-panel { background: #fff; padding: 14px; margin-top: -14px; display: flex; flex-direction: column; gap: 12px; }
-.tab-panel[hidden] { display: none; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
-.tiles.big { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
-.tile { font: inherit; font-size: 11px; border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 1; color: var(--muted); }
-.tile img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
-.tile i { font-size: 26px; color: var(--text); }
-.tile.on { outline: 2px solid var(--green); border-color: transparent; }
-.opts { gap: 8px; }
-.info { margin: 0; font-size: 12px; color: var(--muted); }
-.info i { color: var(--blue); }
-.qr-right { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 12px; }
-.qr-preview { background: #fff; padding: 12px; display: grid; place-items: center; min-height: 240px; }
-.qr-preview img { width: 100%; max-width: 236px; }
-.formats { justify-content: center; }
+@container (max-width: 640px) {
+  .cols { grid-template-columns: 1fr; }
+}
+@container (max-width: 330px) {
+  .pair { grid-template-columns: 1fr; }
+}
+
+/* Short laptop screens: shrink the sticky preview so Save Draft stays visible. */
+@media (min-width: 701px) and (max-height: 720px) {
+  .phone-col { zoom: .85; }
+}
+@media (min-width: 701px) and (max-height: 600px) {
+  .phone-col { zoom: .72; }
+}
 
 @media (max-width: 900px) {
-  .step2, .step3, .step4 { grid-template-columns: 1fr; }
-  .phone-col, .qr-right { position: static; }
-  .tabs { grid-template-columns: repeat(3, 1fr); }
-  .tab-panel { margin-top: 0; }
+  .step3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .step2 { grid-template-columns: 1fr; }
+  .phone-col { position: static; }
+}
+/* 16px stops iPhones and iPads from zooming in when a field is tapped. */
+@media (max-width: 700px), (pointer: coarse) {
+  input:not([type=radio]):not([type=color]):not([type=checkbox]):not([type=range]), textarea, select { font-size: 16px; }
 }
 @media (max-width: 560px) {
-  .cols, .pair { grid-template-columns: 1fr; }
   .wrap { padding: 4px 16px 32px; }
+  .topbar { padding: 14px 16px; }
+  .topbar h1 { font-size: 18px; }
+  .step3 .pair { grid-template-columns: 1fr; }
+}
+@media (max-width: 340px) {
+  .phone-col { zoom: .9; }
+}
+
+/* Large and 4K monitors: scale everything up instead of leaving a narrow strip. */
+@media (min-width: 2000px) {
+  html { zoom: 1.25; }
+}
+@media (min-width: 2500px) {
+  html { zoom: 1.5; }
+}
+@media (min-width: 3200px) {
+  html { zoom: 1.8; }
 }

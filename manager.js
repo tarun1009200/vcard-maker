@@ -1,4 +1,4 @@
-// Step 3 (GitHub connection + Generate Card) and Step 5 (published cards dashboard).
+// Step 3 (GitHub connection + Generate Card) and Step 4 (published cards dashboard).
 // Uses the GitHub client in publisher.js; the form state lives in generator.js.
 
 const TOKEN_KEY = "vcard-maker.token";
@@ -19,8 +19,8 @@ function setPublishState(state, label) {
 // ---------- sign in with GitHub (publishing server) ----------
 function signIn() {
   const popup = window.open(`${PUBLISH_API}/api/login`, "vcard-signin", "width=520,height=700");
-  if (!popup) return setStatus("connStatus", "Popup block ho gaya. Browser mein is site ke popups allow karo aur dobara dabao.", "error");
-  setStatus("connStatus", "GitHub sign-in window mein login karo…");
+  if (!popup) return setStatus("connStatus", "The popup was blocked. Allow popups for this site in your browser and click again.", "error");
+  setStatus("connStatus", "Sign in to GitHub in the popup window…");
 }
 
 window.addEventListener("message", async (e) => {
@@ -58,7 +58,7 @@ function signOut() {
 function handleAuthError(e) {
   if (e && e.status === 401 && signedInAs) {
     signOut();
-    setStatus("connStatus", "Sign-in expire ho gaya. Dobara <b>Sign in with GitHub</b> dabao.", "error");
+    setStatus("connStatus", "Your sign-in has expired. Click <b>Sign in with GitHub</b> again.", "error");
   }
 }
 
@@ -92,7 +92,7 @@ function settingsUrl(page) {
 // ---------- connection + setup ----------
 async function connect() {
   const token = $("ghToken").value.trim();
-  if (!token) return setStatus("connStatus", "Pehle token paste karo.", "error");
+  if (!token) return setStatus("connStatus", "Paste your token first.", "error");
   setStatus("connStatus", "Connecting…");
   try {
     const r = new GitHubRepo($("ghUser").value.trim(), $("ghRepo").value.trim(), token);
@@ -114,25 +114,25 @@ function forgetToken() {
   $("ghToken").value = "";
   repo = null;
   $("setupBox").hidden = true;
-  setStatus("connStatus", "Token is browser se hata diya gaya.");
+  setStatus("connStatus", "The token was removed from this browser.");
   renderPublished();
 }
 
 async function renderSetup() {
   const box = $("setupBox");
   box.hidden = false;
-  box.innerHTML = "Repository check ho rahi hai…";
+  box.innerHTML = "Checking the repository…";
   try {
     const s = await checkSetup(repo);
     const line = (ok, text) => `<li class="${ok ? "ok" : "bad"}"><i class="fa-solid ${ok ? "fa-circle-check" : "fa-circle-xmark"}"></i> ${text}</li>`;
     const pagesText = {
       workflow: "GitHub Pages source: <b>GitHub Actions</b>",
-      legacy: `GitHub Pages abhi "Deploy from a branch" par hai. <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a> mein Source ko <b>GitHub Actions</b> karo.`,
-      disabled: `GitHub Pages band hai. <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a> mein Source: <b>GitHub Actions</b> chuno.`,
-      unknown: `Pages setting padh nahi paaye (token mein Pages: Read-only nahi hai). <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a> mein check karo ki Source <b>GitHub Actions</b> hai.`,
+      legacy: `GitHub Pages is set to "Deploy from a branch". In <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a>, change the Source to <b>GitHub Actions</b>.`,
+      disabled: `GitHub Pages is turned off. In <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a>, set the Source to <b>GitHub Actions</b>.`,
+      unknown: `Couldn't read the Pages setting (the token doesn't have Pages: Read-only). Check in <a href="${settingsUrl("settings/pages")}" target="_blank" rel="noopener">Settings → Pages</a> that the Source is <b>GitHub Actions</b>.`,
     }[s.pages];
     box.innerHTML = `<ul class="checklist">
-      ${line(s.workflow, "Deploy workflow aur card checker (<code>.github/workflows/deploy-cards.yml</code>)")}
+      ${line(s.workflow, "Deploy workflow and card checker (<code>.github/workflows/deploy-cards.yml</code>)")}
       ${line(s.registry, "Card registry (<code>cards.json</code>)")}
       ${line(s.pages === "workflow", pagesText)}
     </ul>
@@ -162,25 +162,24 @@ async function generateCard() {
   showAllErrors = true;
   const errors = showValidation();
   if (Object.keys(errors).length) {
-    setStatus("publishStatus", "Form mein galtiyaan hain. Upar ki list dekh kar theek karo.", "error");
+    setStatus("publishStatus", "The form has errors. Fix the items listed above.", "error");
     $("formErrors").scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
-  if (!repo) return setStatus("publishStatus", PUBLISH_API ? "Pehle <b>Sign in with GitHub</b> dabao (upar wala box)." : "Pehle GitHub se Connect karo (upar wala box).", "error");
-  if (!$("publicOk").checked) return setStatus("publishStatus", "Publish karne se pehle public wala checkbox tick karo.", "error");
+  if (!repo) return setStatus("publishStatus", PUBLISH_API ? "Click <b>Sign in with GitHub</b> first (in the box above)." : "Connect to GitHub first (in the box above).", "error");
+  if (!$("publicOk").checked) return setStatus("publishStatus", "Tick the checkbox about public visibility before publishing.", "error");
 
   const btn = $("generateCard");
   if (btn.disabled) return; // a double click must not publish twice
   btn.disabled = true;
   setPublishState("publishing");
-  setStatus("publishStatus", `<i class="fa-solid fa-spinner fa-spin"></i> GitHub par commit ho raha hai…`);
+  setStatus("publishStatus", `<i class="fa-solid fa-spinner fa-spin"></i> Committing to GitHub…`);
   try {
     const res = await publishCard(repo, current, current.publishedId);
     current.publishedId = res.id;
     lastResult = res;
     showResult(res.id);
     updateUrls();
-    renderQr();
     refreshPublished();
     await waitUntilLive(res);
   } catch (e) {
@@ -204,7 +203,7 @@ function showResult(id) {
 async function waitUntilLive({ id, updated }) {
   const url = publishedUrl(id);
   const actions = settingsUrl("actions");
-  setStatus("publishStatus", `<i class="fa-solid fa-spinner fa-spin"></i> Commit ho gaya. GitHub Pages deploy ho raha hai (1–3 minute)… <a href="${actions}" target="_blank" rel="noopener">Actions dekho</a>`);
+  setStatus("publishStatus", `<i class="fa-solid fa-spinner fa-spin"></i> Committed. Deploying to GitHub Pages (1–3 minutes)… <a href="${actions}" target="_blank" rel="noopener">View Actions</a>`);
   const started = Date.now();
   while (Date.now() - started < 6 * 60 * 1000) {
     await new Promise((r) => setTimeout(r, 10000));
@@ -216,14 +215,14 @@ async function waitUntilLive({ id, updated }) {
         const page = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
         if (page.ok) {
           setPublishState("published");
-          setStatus("publishStatus", `<i class="fa-solid fa-circle-check"></i> Card live hai: <a href="${url}" target="_blank" rel="noopener">${url}</a>`, "ok");
+          setStatus("publishStatus", `<i class="fa-solid fa-circle-check"></i> Your card is live: <a href="${url}" target="_blank" rel="noopener">${url}</a>`, "ok");
           return;
         }
       }
     } catch (e) {}
   }
   setPublishState("failed");
-  setStatus("publishStatus", `Card commit ho gaya hai, lekin 6 minute mein live nahi dikha. <a href="${actions}" target="_blank" rel="noopener">Actions</a> mein deploy ka status dekho aur Settings → Pages ka Source check karo.`, "error");
+  setStatus("publishStatus", `The card was committed, but it didn't go live within 6 minutes. Check the deploy status in <a href="${actions}" target="_blank" rel="noopener">Actions</a> and the Source in Settings → Pages.`, "error");
 }
 
 // ---------- downloads ----------
@@ -236,7 +235,7 @@ async function downloadQrFor(id) {
 
 async function downloadVcfFor(id) {
   const b64 = await readRepo().readFile(`cards/${id}/contact.vcf`);
-  if (!b64) return alert("Is card ki contact file nahi mili (card deactivated ho sakta hai).");
+  if (!b64) return alert("This card's contact file was not found (the card may be deactivated).");
   const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
   downloadBlob(new Blob([bytes], { type: "text/vcard" }), `${id}.vcf`);
 }
@@ -246,7 +245,7 @@ async function copyLink(url) {
     await navigator.clipboard.writeText(url);
     return true;
   } catch (e) {
-    prompt("Link copy karo:", url);
+    prompt("Copy the link:", url);
     return false;
   }
 }
@@ -266,10 +265,10 @@ async function refreshPublished() {
 function renderPublished() {
   const list = $("publishedList");
   if (!published.length) {
-    list.innerHTML = `<li class="empty">Abhi koi card publish nahi hua hai.</li>`;
+    list.innerHTML = `<li class="empty">No cards published yet.</li>`;
     return;
   }
-  const locked = repo ? "" : "disabled title='Pehle Connect karo'";
+  const locked = repo ? "" : "disabled title='Sign in with GitHub first'";
   list.innerHTML = published.map((c) => `
     <li class="${c.id === current.publishedId ? "active" : ""}">
       <div class="meta">
@@ -304,13 +303,13 @@ $("publishedList").addEventListener("click", async (e) => {
       const card = await loadPublishedCard(repo, id);
       current = { ...blankCard(), ...card, id: null, publishedId: id };
       fillForm(current);
-      $("saveMsg").textContent = `Published card "${id}" edit ho raha hai. Generate Card dabane par isi link par update hoga.`;
+      $("saveMsg").textContent = `Editing published card "${id}". Click Generate Card to update it at the same link.`;
       render();
       showResult(id);
       renderPublished();
       $("form").scrollIntoView({ behavior: "smooth" });
     } else if (act === "deactivate") {
-      if (!confirm(`"${id}" ko deactivate karein? Link par "card active nahi hai" dikhega aur contact file hata di jaayegi.`)) return;
+      if (!confirm(`Deactivate "${id}"? The link will show "This card is no longer active" and the contact file will be removed.`)) return;
       await deactivateCard(repo, id);
       await refreshPublished();
     } else if (act === "activate") {
@@ -318,7 +317,7 @@ $("publishedList").addEventListener("click", async (e) => {
       lastResult = res;
       await refreshPublished();
     } else if (act === "delete") {
-      if (!confirm(`"${id}" ko delete karein? Card ki files repository se hat jaayengi aur link kaam karna band kar dega. (Purani git history mein data rahega.)`)) return;
+      if (!confirm(`Delete "${id}"? The card's files will be removed from the repository and the link will stop working. (The data will remain in the old git history.)`)) return;
       await deleteCard(repo, id);
       if (current.publishedId === id) current.publishedId = null;
       await refreshPublished();
